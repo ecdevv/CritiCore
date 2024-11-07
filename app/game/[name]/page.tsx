@@ -1,24 +1,26 @@
 import React from "react";
 import { headers } from "next/headers";
+import Link from "next/link";
 
+export const dynamic = "force-dynamic";
+
+type reviewType = "critic" | "user" ;
 type scores = {
   metacritic: { critic: number; user: number };
   opencritic: { critic: number; user: number };
   steam: { critic: number; user: number };
 };
 
-export default async function Game({ params }: { params: { name: string } }) {
+export default async function Game({ params, searchParams = { type: "critic" } }: { params: { name: string }, searchParams?: { type: reviewType } }) {
   const headersList = await headers();
   const baseUrl = headersList.get('x-base-url') || '';
-  const resolvedParams = await params;
+  const reviewType = (await searchParams).type as reviewType;
 
-  const steamScoreResponse = await fetch(`${baseUrl}/api/steam?gameName=${resolvedParams.name}`);
+  const steamScoreResponse = await fetch(`${baseUrl}/api/steam?gameName=${(await params).name}`);
   const steamScoreData = await steamScoreResponse.json();
   const steamScore = Math.floor(steamScoreData.reviewScore * 100) as number;
   const appName = steamScoreData.appName as string;
 
-  const showUserReviews = false;
-  
   const scores = {
     metacritic: { critic: 85, user: 75 },
     opencritic: { critic: 88, user: 78 },
@@ -41,7 +43,7 @@ export default async function Game({ params }: { params: { name: string } }) {
     };
   };
 
-  const currentScores = showUserReviews
+  const currentScores = reviewType === "user"
     ? {
         metacritic: scores.metacritic.user,
         opencritic: scores.opencritic.user,
@@ -55,51 +57,41 @@ export default async function Game({ params }: { params: { name: string } }) {
         aggregate: aggregateScore(scores).critic,
       };
 
-  // const [showUserReviews, setShowUserReviews] = useState<boolean>(false);
-
-  // const toggleReviewType = () => {
-  //   setShowUserReviews((prev) => !prev);
-  // };
-
-  // Placeholder scores, replace with actual API calls or logic to fetch scores
-
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-8">
-      <h1 className="text-2xl font-bold mb-4">
-        {appName !== '' ? appName : "Invalid Page"}
-      </h1>
+    <div className="flex flex-col items-center justify-center min-h-screen p-8 bg-zinc-950">
+      <h1 className="text-4xl font-bold tracking-wide mb-8 text-white">{appName !== '' ? appName : "Invalid Page"}</h1>
       {appName !== '' && (
         <>
-          <h2 className='text-lg font-bold mb-4'>{showUserReviews ? "User" : "Critic"} Scores</h2>
-          <div className="grid grid-cols-2 gap-4 text-center mb-4">
-            <div>
-              <h2 className="text-lg font-semibold">Metacritic</h2>
-              <p>{currentScores.metacritic}</p>
+          <div className="flex items-center justify-center gap-4 mb-8">
+            <h2 className="text-2xl font-semibold text-white">Critic Scores</h2>
+            <Link
+              href={`?${new URLSearchParams({ type: reviewType === "user" ? "critic" : "user" })}`}
+              className="max-w-[135px] text-center px-4 py-2 bg-zinc-900 text-white rounded hover:bg-zinc-700"
+            >
+              Toggle to {reviewType === "user" ? "Critic" : "User"} Reviews
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 gap-8 text-center">
+            <div className="bg-zinc-900 p-4 rounded-lg">
+              <h2 className="text-lg font-semibold text-white">Metacritic</h2>
+              <p className="text-5xl font-bold text-white">{currentScores.metacritic}</p>
             </div>
-            <div>
-              <h2 className="text-lg font-semibold">OpenCritic</h2>
-              <p>{currentScores.opencritic}</p>
+            <div className="bg-zinc-900 p-4 rounded-lg">
+              <h2 className="text-lg font-semibold text-white">OpenCritic</h2>
+              <p className="text-5xl font-bold text-white">{currentScores.opencritic}</p>
             </div>
-            <div>
-              <h2 className="text-lg font-semibold">Steam</h2>
-              <p>{currentScores.steam}%</p>
+            <div className="bg-zinc-900 p-4 rounded-lg">
+              <h2 className="text-lg font-semibold text-white">Steam</h2>
+              <p className="text-5xl font-bold text-white">{currentScores.steam}%</p>
             </div>
-            <div>
-              <h2 className="text-lg font-semibold">Aggregate</h2>
-              <p>{currentScores.aggregate}</p>
+            <div className="bg-zinc-900 p-4 rounded-lg">
+              <h2 className="text-lg font-semibold text-white">Aggregate</h2>
+              <p className="text-5xl font-bold text-white">{currentScores.aggregate}</p>
             </div>
           </div>
-          <p className='text-sm'>*Steam reviews are users only; aggregated critic scores exclude Steam</p>
+          <p className="text-sm mt-8 text-white">*Steam reviews are users only; aggregated critic scores exclude Steam</p>
         </>
       )}
-        
-
-      {/* <button
-        className="mt-8 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        onClick={toggleReviewType}
-      >
-        Toggle to {showUserReviews ? "Critic" : "User"} Reviews
-      </button> */}
     </div>
   );
 }
