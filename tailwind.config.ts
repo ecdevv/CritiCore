@@ -11,6 +11,13 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        perfect: "var(--perfect)",
+        excellent: "var(--excellent)",
+        great: "var(--great)",
+        good: "var(--good)",
+        average: "var(--average)",
+        bad: "var(--bad)",
+        miss: "var(--miss)",
       },
     },
   },
