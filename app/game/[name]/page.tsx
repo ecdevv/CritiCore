@@ -1,4 +1,5 @@
 import React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { getScoreColorClass } from "@/app/utility/helper";
@@ -14,18 +15,23 @@ export default async function Game({ params, searchParams = { type: "critic" } }
   const headersList = await headers();
   const baseUrl = headersList.get('x-base-url') || '';
   const reviewType = (await searchParams).type as reviewType;
+  const name = (await params).name || '';
 
-  const steamResponse = await fetch(`${baseUrl}/api/steam?gameName=${(await params).name}`);
+  const ocResponse = await fetch(`${baseUrl}/api/opencritic?gameName=${name}`);
+  const ocData = await ocResponse.json();
+  const steamResponse = await fetch(`${baseUrl}/api/steam?gameName=${name}`);
   const steamData = await steamResponse.json();
-  const steamDataStatus = steamData.status;
-  const steamScore = Math.floor(steamData.reviewScore * 100) as number;
-  const steamAgeRating = steamData.ageRating as number;
-  const appName = steamData.appName as string;
-
+  const responseStatus = ocData.status === 200 || steamData.status === 200 ? 200 : 404;
+  const displayName = ocData.name || steamData.name || name;
+  const releaseDate = ocData.releaseDate || steamData.releaseDate || '';
+  const developer = ocData.developer || steamData.developer || '';
+  const publisher = ocData.publisher || steamData.publisher|| '';
+  const image = ocData.image || steamData.image || '';
+  
   const scores = {
     metacritic: { critic: 85, user: 75 },
-    opencritic: { critic: 88, user: 78 },
-    steam: { critic: steamScore, user: steamScore },
+    opencritic: { critic: ocData.criticScore, user: ocData.criticScore },
+    steam: { critic: steamData.score, user: steamData.score },
   };
 
   const calculateAggregateScore = (scores: scores): { critic: number; user: number } => {
@@ -64,41 +70,46 @@ export default async function Game({ params, searchParams = { type: "critic" } }
       };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-8 bg-zinc-900">
-      {(steamAgeRating >= 18 || steamAgeRating === 0) && 
-        <p className="text-lg text-white mb-4">18+</p>
-      }
-      <h1 className="text-4xl font-bold tracking-wide mb-8 text-white">{steamDataStatus === 200 ? appName : "Invalid Page"}</h1>
-      {steamDataStatus === 200 && (
+    <div className="flex flex-col items-center justify-center min-h-screen p-8 gap-5 bg-zinc-900">
+      <h1 className="text-4xl font-bold tracking-wide text-white">{responseStatus === 200 ? displayName : "Invalid Page"}</h1>
+      {responseStatus === 200 && (
         <>
-          <div className="flex items-center justify-center gap-4 mb-8">
-            <h2 className="text-2xl font-semibold text-white">{`${reviewType === "user" ? "User" : " Critic"} Scores`}</h2>
-            <Link
-              href={`?${new URLSearchParams({ type: reviewType === "user" ? "critic" : "user" })}`}
-              className="max-w-[135px] text-center px-4 py-2 bg-zinc-700 text-white rounded hover:bg-zinc-600 transition-all duration-100 ease-in-out"
-            >
-              Toggle to {reviewType === "user" ? "Critic" : "User"} Reviews
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 gap-8 text-center">
+          <p className='mt-[-10px] text-white tracking-wide'>Released on <strong>{releaseDate}</strong> by <strong>{developer}</strong></p>
+          {/* {(steamAgeRating >= 18 || steamAgeRating === 0) && 
+            <p className="text-white">18+</p>
+          } */}
+          <Image 
+            src={image} 
+            alt={displayName} 
+            width={460}
+            height={215}
+            className="mt-[-10px] w-[460px] h-[215px] rounded-lg"
+          />
+          <Link
+            href={`?${new URLSearchParams({ type: reviewType === "user" ? "critic" : "user" })}`}
+            className="text-center px-4 py-2 text-2xl font-semibold text-white tracking-wide rounded border-[1px] border-zinc-800 hover:border-zinc-700 hover:bg-zinc-950 transition-all duration-100 ease-in-out"
+          >
+            {`${reviewType === "user" ? "User" : " Critic"} Scores`}
+          </Link>
+          <div className="grid grid-cols-2 gap-8 text-center text-white">
             <div className={`${getScoreColorClass(currentScores.metacritic)} p-4 rounded-lg`}>
               <h2 className="text-lg font-semibold">Metacritic</h2>
               <p className="text-5xl font-bold">{currentScores.metacritic >= 0 ? currentScores.metacritic : 'N/A'}</p>
             </div>
-            <div className={`${getScoreColorClass(currentScores.opencritic)} p-4 rounded-lg`}>
+            <Link href={`${ocData.url}`} target="_blank" rel="noopener noreferrer" className={`${getScoreColorClass(currentScores.opencritic, true)} p-4 rounded-lg`}>
               <h2 className="text-lg font-semibold">OpenCritic</h2>
               <p className="text-5xl font-bold">{currentScores.opencritic >= 0 ? currentScores.opencritic : 'N/A'}</p>
-            </div>
-            <div className={`${getScoreColorClass(currentScores.steam)} p-4 rounded-lg`}>
+            </Link>
+            <Link href={`${steamData.storeUrl}${steamData.id}`} target="_blank" rel="noopener noreferrer" className={`${getScoreColorClass(currentScores.steam, true)} p-4 rounded-lg`}>
               <h2 className="text-lg font-semibold">Steam</h2>
               <p className="text-5xl font-bold">{currentScores.steam >= 0 ? `${currentScores.steam}%` : 'N/A'}</p>
-            </div>
+            </Link>
             <div className={`${getScoreColorClass(currentScores.aggregate)} p-4 rounded-lg`}>
               <h2 className="text-lg font-semibold">Aggregate</h2>
               <p className="text-5xl font-bold">{currentScores.aggregate >= 0 ? currentScores.aggregate : 'N/A'}</p>
             </div>
           </div>
-          <p className="text-sm mt-8 text-white">*Steam reviews are users only; aggregated critic scores exclude Steam</p>
+          <p className="mt-4 text-sm text-white">*Steam reviews are users only; aggregated critic scores exclude Steam</p>
         </>
       )}
     </div>
