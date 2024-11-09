@@ -92,10 +92,11 @@ export async function GET(request: Request) {
   const publisher = appWithMostReviews[appWithMostReviews.app.appid]?.data?.publishers[0] || undefined
   const ageRating = appWithMostReviews[appWithMostReviews.app.appid]?.data?.required_age || undefined
   const image = appWithMostReviews[appWithMostReviews.app.appid]?.data?.header_image || undefined
+  const url = `${process.env.NEXT_PUBLIC_STEAM_STORE_URL}${id}`
 
   // Calculate the review score; if no reviews, return -1 for invalid data
   const { query_summary: { total_reviews: totalReviews, total_positive: totalPositive } } = appWithMostReviews;
   const score = totalReviews ? Math.floor((totalPositive / totalReviews) * 100) : -1;
 
-  return Response.json({ status: 200, name, id, releaseDate, developer, publisher, ageRating, image, score, totalReviews });
+  return Response.json({ status: 200, name, id, releaseDate, developer, publisher, ageRating, image, score, totalReviews, url });
 }

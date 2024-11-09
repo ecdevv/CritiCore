@@ -10,20 +10,19 @@
   --perfect: #2196F3;
   --excellent: #009688;
   --great: #34AE54;
-  --good:#7EB83d;
+  --good:#7EB83D;
   --average: #E19D00;
-  --bad: #ff6739;
+  --bad: #FF6739;
   --miss: #DE3C31;
 
   /* Hover variants */
-  --perfect-hover: #1b7ec2;     /* Darker shade of blue */
-  --excellent-hover: #00796b;   /* Darker shade of teal */
-  --great-hover: #2d9148;       /* Darker shade of green */
-  --good-hover: #6b9d33;        /* Darker shade of lime green */
-  --average-hover: #bf8400;     /* Darker shade of amber */
-  --bad-hover: #e85c32;         /* Darker shade of orange */
-  --miss-hover: #b42e29;        /* Darker shade of red */
-
+  --perfect-hover: #1B7EC2;     /* Darker shade of blue */
+  --excellent-hover: #00796B;   /* Darker shade of teal */
+  --great-hover: #2D9148;       /* Darker shade of green */
+  --good-hover: #6B9D33;        /* Darker shade of lime green */
+  --average-hover: #Bf8400;     /* Darker shade of amber */
+  --bad-hover: #E85C32;         /* Darker shade of orange */
+  --miss-hover: #B42E29;        /* Darker shade of red */
 }
 
 @media (prefers-color-scheme: dark) {
