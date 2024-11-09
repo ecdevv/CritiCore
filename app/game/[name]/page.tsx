@@ -20,7 +20,7 @@ export default async function Game({ params, searchParams = { type: "critic" } }
   // Fetching API data from Metacritic, OpenCritic, and Steam. OpenCritic API is limited to 25 searches per day and 200 requests per day, so usually using dummy data
   // const ocResponse = await fetch(`${baseUrl}/api/opencritic?gameName=${name}`);
   // const ocData = await ocResponse.json();
-  const ocData = { status: 400, name: '', releaseDate: '', developer: '', publisher: '', image: '', criticScore: -1, userScore: -1, totalCriticReviews: 100, totalUserReviews: 100, url: 'https://opencritic.com' };
+  const ocData = { status: 400, name: '', releaseDate: '', developer: '', publisher: '', image: '', criticScore: -1, userScore: -1, totalCriticReviews: 100, totalUserReviews: -1, url: 'https://opencritic.com' };
   const steamResponse = await fetch(`${baseUrl}/api/steam?gameName=${name}`);
   const steamData = await steamResponse.json();
   const responseStatus = ocData.status === 200 || steamData.status === 200 ? 200 : 404;
@@ -29,31 +29,29 @@ export default async function Game({ params, searchParams = { type: "critic" } }
   const developer = ocData.developer || steamData.developer || '';
   const publisher = ocData.publisher || steamData.publisher|| '';
   const image = ocData.image || steamData.image || '';
-  const validScores = ocData.criticScore >= 0 || ocData.userScore >= 0 || steamData.score >= 0;
+  const validScores = ocData.criticScore >= 0 || ocData.userScore >= 0 || steamData.userScore >= 0;
   
   const scores = {
     metacritic: { critic: 85, user: 75 },
     opencritic: { critic: ocData.criticScore, user: ocData.userScore },
-    steam: { critic: steamData.score, user: steamData.score },
+    steam: { critic: steamData.criticScore, user: steamData.userScore },
   };
 
+  // Calculating aggregate score
   const calculateAggregateScore = (scores: scores): { critic: number; user: number } => {
-    const validScores = Object.entries(scores).filter(([_, { critic, user }]) => critic >= 0 && user >= 0);
+    // Filter out scores that are not available;
+    // Also manually filter out steam and opencritic scores for critic and user scores respectively
+    // The manual filtering is only needed if we want to do critic === user scores for display purposes since steam only has user scores and opencritic only has critic scores
+    const validCriticScores = Object.entries(scores).filter(([key, { critic }]) => key !== 'steam' && critic >= 0);
+    const validUserScores = Object.entries(scores).filter(([key, { user }]) => key !== 'opencritic' && user >= 0);
 
-    if (validScores.length === 0) {
-      return { critic: -1, user: -1 };
-    }
+    const criticAverage = validCriticScores.length > 0
+      ? Math.round(validCriticScores.reduce((sum, [_, { critic }]) => sum + critic, 0) / validCriticScores.length)
+      : -1;
 
-    const { critic: criticSum, user: userSum } = validScores.reduce(
-      (acc, [_, { critic, user }]) => ({
-        critic: acc.critic + (critic >= 0 ? critic : 0),
-        user: acc.user + user,
-      }),
-      { critic: 0, user: 0 }
-    );
-
-    const criticAverage = Math.round(criticSum / validScores.length);
-    const userAverage = Math.round(userSum / validScores.length);
+    const userAverage = validUserScores.length > 0
+      ? Math.round(validUserScores.reduce((sum, [_, { user }]) => sum + user, 0) / validUserScores.length)
+      : -1;
 
     return { critic: criticAverage, user: userAverage };
   };
@@ -73,62 +71,66 @@ export default async function Game({ params, searchParams = { type: "critic" } }
       };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-8 gap-5 bg-zinc-900">
-      <h1 className="text-4xl font-bold tracking-wide text-white">{(responseStatus === 200 && validScores) ? displayName : "Invalid Page"}</h1>
-      {(responseStatus === 200 && validScores) && (
-        <>
-          <p className='mt-[-10px] text-white tracking-wide'>Released on <strong>{releaseDate}</strong> by <strong>{developer}</strong></p>
-          {/* {(steamAgeRating >= 18 || steamAgeRating === 0) && 
-            <p className="text-white">18+</p>
-          } */}
-          <Image 
-            src={image} 
-            alt={displayName} 
-            width={460}
-            height={215}
-            className="mt-[-10px] w-[460px] h-[215px] rounded-lg"
-          />
-          <Link
-            href={`?${new URLSearchParams({ type: reviewType === "user" ? "critic" : "user" })}`}
-            className="text-center px-4 py-2 text-2xl font-semibold text-white tracking-wide rounded border-[1px] border-zinc-800 hover:border-zinc-700 hover:bg-zinc-950 transition-all duration-100 ease-in-out"
-          >
-            {`${reviewType === "user" ? "User" : " Critic"} Scores`}
-          </Link>
-          <div className="grid grid-cols-2 gap-8 text-center text-white">
-            <div className={`${getScoreColorClass(currentScores.metacritic)} p-4 rounded-lg`}>
-              <h2 className="text-lg font-semibold">Metacritic</h2>
-              <p className="text-5xl font-bold">{currentScores.metacritic >= 0 ? currentScores.metacritic : 'N/A'}</p>
-            </div>
-            {ocData.status !== 200 ? (
-              <div className={`${getScoreColorClass(currentScores.opencritic, true)} p-4 rounded-lg`}>
-                <h2 className="text-lg font-semibold">OpenCritic</h2>
-                <p className="text-5xl font-bold">{currentScores.opencritic >= 0 ? currentScores.opencritic : 'N/A'}</p>
+    <div className='flex justify-center items-center min-h-screen p-8 bg-zinc-900'>
+      <div className="inline-flex flex-col justify-center items-center p-8 gap-5">
+        <h1 className="text-4xl font-bold tracking-wide text-white">{(responseStatus === 200 && validScores) ? displayName : "Invalid Page"}</h1>
+        {(responseStatus === 200 && validScores) && (
+          <>
+            <p className='mt-[-10px] text-white tracking-wide'>Released on <strong>{releaseDate}</strong> by <strong>{developer}</strong></p>
+            {/* {(steamAgeRating >= 18 || steamAgeRating === 0) && 
+              <p className="text-white">18+</p>
+            } */}
+            <Image 
+              src={image} 
+              alt={displayName} 
+              width={460}
+              height={215}
+              className="mt-[-10px] w-[460px] h-[215px] rounded-lg"
+            />
+            <Link
+              href={`?${new URLSearchParams({ type: reviewType === "user" ? "critic" : "user" })}`}
+              className="text-center px-4 py-2 text-2xl font-semibold text-white tracking-wide rounded border-[1px] border-zinc-800 hover:border-zinc-700 hover:bg-zinc-950 transition-all duration-100 ease-in-out"
+            >
+              {`${reviewType === "user" ? "User" : " Critic"} Scores`}
+            </Link>
+            <div className="grid grid-cols-2 gap-8 text-center text-white">
+              <div className={`${getScoreColorClass(currentScores.metacritic)} flex flex-col justify-center items-center w-[125px] aspect-[20/19] p-3 rounded-lg`}>
+                <h2 className="text-lg font-semibold">Metacritic</h2>
+                <p className="text-5xl font-bold">{currentScores.metacritic >= 0 ? currentScores.metacritic : 'N/A'}</p>
               </div>
-            ) : (
-              <Link href={`${ocData.url}`} target="_blank" rel="noopener noreferrer" className={`${getScoreColorClass(currentScores.opencritic, true)} p-4 rounded-lg`}>
-                <h2 className="text-lg font-semibold">OpenCritic</h2>
-                <p className="text-5xl font-bold">{currentScores.opencritic >= 0 ? currentScores.opencritic : 'N/A'}</p>
-              </Link>
-            )}
-            {steamData.status !== 200 ? (
-              <div className={`${getScoreColorClass(currentScores.steam, true)} p-4 rounded-lg`}>
-                <h2 className="text-lg font-semibold">Steam</h2>
-                <p className="text-5xl font-bold">{currentScores.steam >= 0 ? `${currentScores.steam}%` : 'N/A'}</p>
+              {ocData.status !== 200 || currentScores.opencritic < 0 ? (
+                <div className={`${getScoreColorClass(currentScores.opencritic, true)} flex flex-col justify-center items-center w-[125px] aspect-[20/19] p-3 rounded-lg`}>
+                  <h2 className="text-lg font-semibold">OpenCritic</h2>
+                  <p className="text-5xl font-bold">{currentScores.opencritic >= 0 ? currentScores.opencritic : 'N/A'}</p>
+                </div>
+              ) : (
+                <Link href={`${ocData.url}`} target="_blank" rel="noopener noreferrer" className={`${getScoreColorClass(currentScores.opencritic, true)} flex flex-col justify-center items-center w-[125px] aspect-[20/19] p-3 rounded-lg`}>
+                  <h2 className="text-lg font-semibold">OpenCritic</h2>
+                  <p className="text-5xl font-bold">{currentScores.opencritic >= 0 ? currentScores.opencritic : 'N/A'}</p>
+                </Link>
+              )}
+              {steamData.status !== 200 || currentScores.steam < 0 ? (
+                <div className={`${getScoreColorClass(currentScores.steam, true)} flex flex-col justify-center items-center w-[125px] aspect-[20/19] p-3 rounded-lg`}>
+                  <h2 className="text-lg font-semibold">Steam</h2>
+                  <p className="text-5xl font-bold">{currentScores.steam >= 0 ? `${currentScores.steam}%` : 'N/A'}</p>
+                </div>
+              ) : (
+                <Link href={`${steamData.url}`} target="_blank" rel="noopener noreferrer" className={`${getScoreColorClass(currentScores.steam, true)} flex flex-col justify-center items-center w-[125px] aspect-[20/19] p-3 rounded-lg`}>
+                  <h2 className="text-lg font-semibold">Steam</h2>
+                  <p className="text-5xl font-bold">{currentScores.steam >= 0 ? `${currentScores.steam}%` : 'N/A'}</p>
+                </Link>
+              )}
+              <div className={`${getScoreColorClass(currentScores.aggregate)} flex flex-col justify-center items-center w-[125px] aspect-[20/19] p-3 rounded-lg`}>
+                <h2 className="text-lg font-semibold">Aggregate</h2>
+                <p className="text-5xl font-bold">{currentScores.aggregate >= 0 ? currentScores.aggregate : 'N/A'}</p>
               </div>
-            ) : (
-              <Link href={`${steamData.url}`} target="_blank" rel="noopener noreferrer" className={`${getScoreColorClass(currentScores.steam, true)} p-4 rounded-lg`}>
-                <h2 className="text-lg font-semibold">Steam</h2>
-                <p className="text-5xl font-bold">{currentScores.steam >= 0 ? `${currentScores.steam}%` : 'N/A'}</p>
-              </Link>
-            )}
-            <div className={`${getScoreColorClass(currentScores.aggregate)} p-4 rounded-lg`}>
-              <h2 className="text-lg font-semibold">Aggregate</h2>
-              <p className="text-5xl font-bold">{currentScores.aggregate >= 0 ? currentScores.aggregate : 'N/A'}</p>
             </div>
-          </div>
-          <p className="mt-4 text-sm text-white">*Steam reviews are users only; aggregated critic scores exclude Steam</p>
-        </>
-      )}
+            <p className="mt-4 text-sm text-white text-center">
+              *Due to API call limits from OpenCritic, some critic scores may not load if limits are reached.<br />We recommend checking back later if data appears unavailable.
+            </p>
+          </>
+        )}
+      </div>
     </div>
   );
 }

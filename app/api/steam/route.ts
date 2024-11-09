@@ -1,102 +1,149 @@
 import { normalizeString } from "@/app/utility/helper";
+import { match } from "assert";
 
 interface AppCacheEntry {
-  status: Response['status'];
   matchingApps: { name: string; appid: number }[];
   expires: number;
 }
 
+interface AppDataCacheEntry {
+  id: number;
+  name: string;
+  releaseDate: string | undefined;
+  developer: string | undefined;
+  publisher: string | undefined;
+  ageRating: number | undefined;
+  image: string | undefined;
+  url: string;
+  criticScore: number;
+  userScore: number;
+  totalReviews: number;
+  expires: number;
+}
+
 const appCache: Record<string, AppCacheEntry> = {};
+const appDataCache: Record<string, AppDataCacheEntry> = {};
 
 async function getAppIDByName(name: string): Promise<AppCacheEntry> {
   const cacheKey = normalizeString(name);
   const now = Date.now() / 1000;
   const cachedEntry = appCache[cacheKey];
 
-  if (cachedEntry && cachedEntry.expires > now) {
-    return cachedEntry;
-  }
+  if (cachedEntry && cachedEntry.expires > now) return cachedEntry;
 
   try {
-    // Fetch app ID based on the game name from params in url
-    const response = await fetch('https://api.steampowered.com/ISteamApps/GetAppList/v2/');
+    // Fetch applist for app ID based on the game name from params in url
+    const response = await fetch(`${process.env.STEAM_API_APPLIST}`);
+    if (!response.ok) throw new Error(`Failed to fetch applist data, status code: ${response.status}`);
     const data = await response.json();
+    if (!data) throw new Error('Invalid applist data, status code: 404');
+
+    // Find duplicate app names and get their data
     const matchingApps = data.applist.apps.filter((app: { name: string; appid: number }) => 
-      normalizeString(app.name) === cacheKey) || { name: '', appid: -1 };
+      normalizeString(app.name) === cacheKey);
+    if (!matchingApps.length) {
+      const newEntry = { matchingApps: [], expires: now + 600 };
+      appCache[cacheKey] = newEntry;
+      throw new Error('No matching app(s) found, status code: 404');
+    }
 
     const newEntry = {
-      status: response.status,
       matchingApps,
-      expires: response.ok ? now + 600 : now,
+      expires: now + 600  // 10 minutes
     };
 
     appCache[cacheKey] = newEntry;
     return newEntry;
   } catch (error) {
-    console.error('Error fetching app ID:', error);
-    throw new Error('Could not retrieve app ID');
+    console.error(error);
+    throw new Error('Could not retrieve applist data');
+  }
+}
+
+async function getAppData(appid: number): Promise<AppDataCacheEntry> {
+  const cacheKey = `app-${appid}`;
+  const now = Date.now() / 1000;
+  const cachedEntry = appDataCache[cacheKey];
+
+  if (cachedEntry && cachedEntry.expires > now) return cachedEntry;
+
+  try {
+    // Fetch game data based on the app ID
+    const [detailsResponse, reviewsResponse] = await Promise.all([
+      fetch(`${process.env.STEAM_API_APPDETAILS}?${new URLSearchParams({ appids: appid.toString() })}`, { cache: 'force-cache' }),
+      fetch(`${process.env.STEAM_API_APPREVIEWS}/${appid}?${new URLSearchParams({ json: '1', language: 'all' })}`, { cache: 'force-cache' }),
+    ]);
+    if (!detailsResponse.ok || !reviewsResponse.ok) {
+      throw new Error('Failed to fetch app data, status code: ' + (detailsResponse.ok ? detailsResponse.status : reviewsResponse.status));
+    }
+    const [detailsData, reviewsData] = await Promise.all([
+      detailsResponse.json(),
+      reviewsResponse.json(),
+    ]);
+    if (!detailsData) throw new Error('Invalid details data, status code: 404');
+    if (!reviewsData || reviewsData.success !== 1) throw new Error('Invalid reviews data, status code: 404'); // Check for validity using its success property since its response/data is always returning ok
+
+    // Extract data from the responses
+    const id = appid
+    const name = detailsData[appid]?.data?.name || ''
+    const date = detailsData[appid]?.data?.release_date?.date
+    const releaseDate = date ? new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : undefined
+    const developer = detailsData[appid]?.data?.developers[0] || undefined
+    const publisher = detailsData[appid]?.data?.publishers[0] || undefined
+    const ageRating = detailsData[appid]?.data?.required_age || undefined
+    const image = detailsData[appid]?.data?.header_image || undefined
+    const url = `${process.env.NEXT_PUBLIC_STEAM_STORE_URL}/${appid}`
+
+    // Calculate critic and user scores
+    const { query_summary: { total_reviews: totalReviews, total_positive: totalPositive } } = reviewsData;
+    const criticScore = -1;
+    const userScore = totalReviews ? Math.floor((totalPositive / totalReviews) * 100) : -1;
+
+    const newEntry = {
+      id,
+      name,
+      releaseDate,
+      developer,
+      publisher,
+      ageRating,
+      image,
+      url,
+      criticScore,
+      userScore,
+      totalReviews,
+      expires: now + 600  // 10 minutes
+    };
+
+    appDataCache[cacheKey] = newEntry;
+    return newEntry;
+  } catch (error) {
+    console.error(`Error retrieving app data for app ID: ${appid}, Error:`, error);
+    throw new Error('Could not retrieve app data');
   }
 }
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const gameName = searchParams.get('gameName') || '';
-  const { matchingApps } = await getAppIDByName(gameName);
 
-  // Check if the app(s) was found
-  if (!matchingApps.length) {
-    return Response.json({ status: 404, appName: '', reviewScore: -1 });
+  try {
+    // Fetch matching apps from applist based on the game name and get the full app data based on the app ID. If there are no matching apps in the cache, throw an error.
+    const { matchingApps } = await getAppIDByName(gameName);
+    if (!matchingApps.length) throw new Error('CACHED - No matching app(s) found, status code: 404');
+    const appDataPromises = matchingApps.map(async (app) => await getAppData(app.appid));
+    const appData = await Promise.all(appDataPromises);
+
+    // Find the app with the most reviews
+    const appWithMostReviews = appData.reduce(
+      (mostReviewsApp, currentApp) => 
+        currentApp.totalReviews > mostReviewsApp.totalReviews ? currentApp : mostReviewsApp,
+      appData[0]
+    );
+
+    return Response.json({ status: 200, ...appWithMostReviews });
+  } catch (error) {
+    console.error('Unexpected error fetching app data:', error);
+    return Response.json({ error: 'Internal Server Error' }, { status: 500 });
   }
-
-  // Handle multiple apps with the same name or just one, await Steam API responses, and combines all the data
-  const appInfos = await Promise.all(matchingApps.map(async (app) => {
-    try {
-      const [detailsResponse, reviewsResponse] = await Promise.all([
-        fetch(`https://store.steampowered.com/api/appdetails?appids=${app.appid}`, { cache: 'force-cache' }),
-        fetch(`https://store.steampowered.com/appreviews/${app.appid}?json=1&language=all`, { cache: 'force-cache' }),
-      ]);
-
-      if (!detailsResponse.ok || !reviewsResponse.ok) {
-        throw new Error('Failed to fetch app data');
-      }
-
-      const [detailsData, reviewsData] = await Promise.all([
-        detailsResponse.json(),
-        reviewsResponse.json(),
-      ]);
-
-      // Check if the data is valid for reviews using its success property since its response is always returning ok
-      if (reviewsData.success !== 1) {
-        throw new Error('Failed to fetch valid review data');
-      }
-
-      return { app, ...detailsData, ...reviewsData };
-    } catch (error) {
-      console.error(`Error fetching app ${app.appid} data:`, error);
-      throw new Error('Could not retrieve app data');
-    }
-  }));
-
-  // Find the app with the most reviews
-  const appWithMostReviews = appInfos.reduce(
-    (mostReviewsApp, currentApp) => 
-      currentApp.query_summary.total_reviews > mostReviewsApp.query_summary.total_reviews ? currentApp : mostReviewsApp,
-    appInfos[0]
-  );
-
-  // Get the data from the app with the most reviews
-  const name = appWithMostReviews.app.name
-  const id = appWithMostReviews.app.appid
-  const releaseDate = appWithMostReviews[appWithMostReviews.app.appid]?.data?.release_date?.date || undefined
-  const developer = appWithMostReviews[appWithMostReviews.app.appid]?.data?.developers[0] || undefined
-  const publisher = appWithMostReviews[appWithMostReviews.app.appid]?.data?.publishers[0] || undefined
-  const ageRating = appWithMostReviews[appWithMostReviews.app.appid]?.data?.required_age || undefined
-  const image = appWithMostReviews[appWithMostReviews.app.appid]?.data?.header_image || undefined
-  const url = `${process.env.NEXT_PUBLIC_STEAM_STORE_URL}${id}`
-
-  // Calculate the review score; if no reviews, return -1 for invalid data
-  const { query_summary: { total_reviews: totalReviews, total_positive: totalPositive } } = appWithMostReviews;
-  const score = totalReviews ? Math.floor((totalPositive / totalReviews) * 100) : -1;
-
-  return Response.json({ status: 200, name, id, releaseDate, developer, publisher, ageRating, image, score, totalReviews, url });
 }
+
