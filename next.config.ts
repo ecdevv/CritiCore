@@ -6,11 +6,16 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "shared.akamai.steamstatic.com"
+        hostname: process.env.OPENCRITIC_API_HOST || "",
+        
       },
       {
         protocol: "https",
-        hostname: "opencritic-api.p.rapidapi.com"
+        hostname: process.env.STEAM_API_HOST || "",
+      },
+      {
+        protocol: "https",
+        hostname: process.env.SGDB_API_HOST || "",
       }
     ]
   }

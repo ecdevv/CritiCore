@@ -1,5 +1,4 @@
 import { normalizeString } from "@/app/utility/helper";
-import { match } from "assert";
 
 interface AppCacheEntry {
   matchingApps: { name: string; appid: number }[];
@@ -9,12 +8,13 @@ interface AppCacheEntry {
 interface AppDataCacheEntry {
   id: number;
   name: string;
-  releaseDate: string | undefined;
-  developer: string | undefined;
-  publisher: string | undefined;
-  ageRating: number | undefined;
-  image: string | undefined;
+  releaseDate: string;
+  developer: string;
+  publisher: string;
+  ageRating: number;
+  image: string;
   url: string;
+  devUrl: string;
   criticScore: number;
   userScore: number;
   totalReviews: number;
@@ -34,18 +34,14 @@ async function getAppIDByName(name: string): Promise<AppCacheEntry> {
   try {
     // Fetch applist for app ID based on the game name from params in url
     const response = await fetch(`${process.env.STEAM_API_APPLIST}`);
-    if (!response.ok) throw new Error(`Failed to fetch applist data, status code: ${response.status}`);
+    if (!response.ok) throw new Error(`STEAM: Failed to fetch applist data, status code: ${response.status}`);
     const data = await response.json();
-    if (!data) throw new Error('Invalid applist data, status code: 404');
+    if (!data) throw new Error('STEAM: Invalid applist data, status code: 404');
 
     // Find duplicate app names and get their data
     const matchingApps = data.applist.apps.filter((app: { name: string; appid: number }) => 
       normalizeString(app.name) === cacheKey);
-    if (!matchingApps.length) {
-      const newEntry = { matchingApps: [], expires: now + 600 };
-      appCache[cacheKey] = newEntry;
-      throw new Error('No matching app(s) found, status code: 404');
-    }
+    if (!matchingApps.length) throw new Error('STEAM: No matching app(s) found, status code: 404');
 
     const newEntry = {
       matchingApps,
@@ -56,7 +52,9 @@ async function getAppIDByName(name: string): Promise<AppCacheEntry> {
     return newEntry;
   } catch (error) {
     console.error(error);
-    throw new Error('Could not retrieve applist data');
+    const newEntry = { matchingApps: [], expires: now + 600 };
+    appCache[cacheKey] = newEntry;
+    throw new Error('STEAM: Could not retrieve applist data');
   }
 }
 
@@ -74,25 +72,26 @@ async function getAppData(appid: number): Promise<AppDataCacheEntry> {
       fetch(`${process.env.STEAM_API_APPREVIEWS}/${appid}?${new URLSearchParams({ json: '1', language: 'all' })}`, { cache: 'force-cache' }),
     ]);
     if (!detailsResponse.ok || !reviewsResponse.ok) {
-      throw new Error('Failed to fetch app data, status code: ' + (detailsResponse.ok ? detailsResponse.status : reviewsResponse.status));
+      throw new Error('STEAM: Failed to fetch app data, status code: ' + (detailsResponse.ok ? detailsResponse.status : reviewsResponse.status));
     }
     const [detailsData, reviewsData] = await Promise.all([
       detailsResponse.json(),
       reviewsResponse.json(),
     ]);
-    if (!detailsData) throw new Error('Invalid details data, status code: 404');
-    if (!reviewsData || reviewsData.success !== 1) throw new Error('Invalid reviews data, status code: 404'); // Check for validity using its success property since its response/data is always returning ok
+    if (!detailsData) throw new Error('STEAM: Invalid details data, status code: 404');
+    if (!reviewsData || reviewsData.success !== 1) throw new Error('STEAM: Invalid reviews data, status code: 404'); // Check for validity using its success property since its response/data is always returning ok
 
     // Extract data from the responses
     const id = appid
-    const name = detailsData[appid]?.data?.name || ''
+    const name = detailsData[appid]?.data?.name
     const date = detailsData[appid]?.data?.release_date?.date
-    const releaseDate = date ? new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : undefined
-    const developer = detailsData[appid]?.data?.developers[0] || undefined
-    const publisher = detailsData[appid]?.data?.publishers[0] || undefined
-    const ageRating = detailsData[appid]?.data?.required_age || undefined
-    const image = detailsData[appid]?.data?.header_image || undefined
+    const releaseDate = new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    const developer = detailsData[appid]?.data?.developers[0]
+    const publisher = detailsData[appid]?.data?.publishers[0]
+    const ageRating = detailsData[appid]?.data?.required_age
+    const image = detailsData[appid]?.data?.header_image
     const url = `${process.env.NEXT_PUBLIC_STEAM_STORE_URL}/${appid}`
+    const devUrl = detailsData[appid]?.data?.website
 
     // Calculate critic and user scores
     const { query_summary: { total_reviews: totalReviews, total_positive: totalPositive } } = reviewsData;
@@ -108,6 +107,7 @@ async function getAppData(appid: number): Promise<AppDataCacheEntry> {
       ageRating,
       image,
       url,
+      devUrl,
       criticScore,
       userScore,
       totalReviews,
@@ -117,8 +117,8 @@ async function getAppData(appid: number): Promise<AppDataCacheEntry> {
     appDataCache[cacheKey] = newEntry;
     return newEntry;
   } catch (error) {
-    console.error(`Error retrieving app data for app ID: ${appid}, Error:`, error);
-    throw new Error('Could not retrieve app data');
+    console.error(`STEAM: Error retrieving app data for app ID: ${appid}, Error:`, error);
+    throw new Error('STEAM: Could not retrieve app data');
   }
 }
 
@@ -129,10 +129,9 @@ export async function GET(request: Request) {
   try {
     // Fetch matching apps from applist based on the game name and get the full app data based on the app ID. If there are no matching apps in the cache, throw an error.
     const { matchingApps } = await getAppIDByName(gameName);
-    if (!matchingApps.length) throw new Error('CACHED - No matching app(s) found, status code: 404');
+    if (!matchingApps.length) throw new Error('STEAM: CACHED - No matching app(s) found, status code: 404');
     const appDataPromises = matchingApps.map(async (app) => await getAppData(app.appid));
     const appData = await Promise.all(appDataPromises);
-
     // Find the app with the most reviews
     const appWithMostReviews = appData.reduce(
       (mostReviewsApp, currentApp) => 
@@ -142,8 +141,8 @@ export async function GET(request: Request) {
 
     return Response.json({ status: 200, ...appWithMostReviews });
   } catch (error) {
-    console.error('Unexpected error fetching app data:', error);
-    return Response.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error('STEAM: Unexpected error fetching app data:', error);
+    return Response.json({ error: 'STEAM: Internal Server Error' }, { status: 500 });
   }
 }
 

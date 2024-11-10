@@ -28,6 +28,10 @@ const config: Config = {
         bad_hover: "var(--bad-hover)",
         miss_hover: "var(--miss-hover)",
       },
+      boxShadow: {
+        'vertical-card': '0 6px 12px rgba(0, 0, 0, 1)',
+        'box-card': '0 2px 8px rgba(0, 0, 0, 1)',
+      }
     },
   },
   plugins: [],
