@@ -8,21 +8,21 @@
 
   /* Color Map Scheme for Scores */
   --perfect: #2196F3;
-  --excellent: #009688;
-  --great: #34AE54;
-  --good:#7EB83D;
-  --average: #E19D00;
-  --bad: #FF6739;
-  --miss: #DE3C31;
+  --excellent: #009E8F;
+  --great: #26A64D;
+  --good: #6DA41B;
+  --average: #C49515;
+  --bad: #E36A00;
+  --miss: #C5272F;
 
-  /* Hover variants */
-  --perfect-hover: #1B7EC2;     /* Darker shade of blue */
-  --excellent-hover: #00796B;   /* Darker shade of teal */
-  --great-hover: #2D9148;       /* Darker shade of green */
-  --good-hover: #6B9D33;        /* Darker shade of lime green */
-  --average-hover: #Bf8400;     /* Darker shade of amber */
-  --bad-hover: #E85C32;         /* Darker shade of orange */
-  --miss-hover: #B42E29;        /* Darker shade of red */
+  /* Hover Variants */
+  --perfect-hover: #1976C1;
+  --excellent-hover: #007C70;
+  --great-hover: #1F8240;
+  --good-hover: #5A8416;
+  --average-hover: #9B7A11;
+  --bad-hover: #B35400;
+  --miss-hover: #9D2127;
 }
 
 @media (prefers-color-scheme: dark) {

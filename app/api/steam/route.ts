@@ -1,4 +1,5 @@
 import { normalizeString } from "@/app/utility/helper";
+import { formatDate } from "@/app/utility/formatDate";
 
 interface AppCacheEntry {
   matchingApps: { name: string; appid: number }[];
@@ -12,7 +13,8 @@ interface AppDataCacheEntry {
   developer: string;
   publisher: string;
   ageRating: number;
-  image: string;
+  headerImage: string;
+  capsuleImage: string;
   url: string;
   devUrl: string;
   criticScore: number;
@@ -85,11 +87,13 @@ async function getAppData(appid: number): Promise<AppDataCacheEntry> {
     const id = appid
     const name = detailsData[appid]?.data?.name
     const date = detailsData[appid]?.data?.release_date?.date
-    const releaseDate = new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    const releaseDate = date ? formatDate(date) : ''
+    console.log(date, releaseDate)
     const developer = detailsData[appid]?.data?.developers[0]
     const publisher = detailsData[appid]?.data?.publishers[0]
     const ageRating = detailsData[appid]?.data?.required_age
-    const image = detailsData[appid]?.data?.header_image
+    const headerImage = detailsData[appid]?.data?.header_image
+    const capsuleImage = process.env.STEAM_CDN_CAPSULE + '/' + appid + '/' +  'library_600x900_2x.jpg'
     const url = `${process.env.NEXT_PUBLIC_STEAM_STORE_URL}/${appid}`
     const devUrl = detailsData[appid]?.data?.website
 
@@ -105,7 +109,8 @@ async function getAppData(appid: number): Promise<AppDataCacheEntry> {
       developer,
       publisher,
       ageRating,
-      image,
+      headerImage,
+      capsuleImage,
       url,
       devUrl,
       criticScore,

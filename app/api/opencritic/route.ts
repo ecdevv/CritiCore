@@ -11,7 +11,7 @@ interface AppDataCacheEntry {
   releaseDate: string;
   developer: string;
   publisher: string;
-  image: string;
+  capsuleImage: string;
   criticScore: number;
   userScore: number;
   totalCriticReviews: number;
@@ -99,11 +99,11 @@ async function getAppData(appId: number): Promise<AppDataCacheEntry> {
     const releaseDate = `${date.toLocaleString('default', { month: 'long' })} ${date.getDate()}, ${date.getFullYear()}`;
     const developer = data.Companies.find((c: { type: string }) => c.type.toLowerCase() === 'developer')?.name || data.Companies.find((c: { type: string }) => c.type.toLowerCase() === 'publisher')?.name;
     const publisher = data.Companies.find((c: { type: string }) => c.type.toLowerCase() === 'publisher')?.name || data.Companies.find((c: { type: string }) => c.type.toLowerCase() === 'developer')?.name;
-    const image = process.env.OPENCRITIC_API_HOST + '/' + data.images.square.og; // TODO: Check if this is correct
+    const capsuleImage = 'https://' + process.env.OPENCRITIC_IMG_HOST + '/' + data.images.box.og; // Box image
     const criticScore = Math.round(data.topCriticScore);
-    const userScore = -1; // TODO: Check if this is correct
+    const userScore = -1;
     const totalCriticReviews = data.numReviews;
-    const totalUserReviews = -1; // TODO: Check if this is correct
+    const totalUserReviews = -1;
     const ocUrl = data.url;
     
     const newEntry = {
@@ -112,7 +112,7 @@ async function getAppData(appId: number): Promise<AppDataCacheEntry> {
       releaseDate,
       developer,
       publisher,
-      image,
+      capsuleImage,
       criticScore,
       userScore,
       totalCriticReviews,
