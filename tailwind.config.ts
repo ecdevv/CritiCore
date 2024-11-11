@@ -27,10 +27,19 @@ const config: Config = {
         average_hover: "var(--average-hover)",
         bad_hover: "var(--bad-hover)",
         miss_hover: "var(--miss-hover)",
+
+        mighty: "var(--mighty)",
+        strong: "var(--strong)",
+        fair: "var(--fair)",
+        weak: "var(--weak)",
+
+        positive: "var(--positive)",
+        mixed: "var(--mixed)",
+        negative: "var(--negative)",
       },
       boxShadow: {
-        'vertical-card': '0 6px 12px rgba(0, 0, 0, 1)',
-        'box-card': '0 2px 8px rgba(0, 0, 0, 1)',
+        'vertical-card': '0 4px 12px rgba(0, 0, 0, 1)',
+        'box-card': '0 2px 6px rgba(0, 0, 0, 1)',
       }
     },
   },

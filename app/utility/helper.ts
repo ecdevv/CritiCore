@@ -1,3 +1,12 @@
+// app/utility/helper.ts
+/**
+ * Gets the color class for a score based on its value.
+ * Also has hover variants
+ *
+ * @param score - The score value to get the color class for.
+ * @param hoverable - Whether to add hover variants to the class.
+ * @returns The color class for the score className.
+ */
 export const getScoreColorClass = (score: number, hoverable = false) => {
   let className = '';
   if (score >= 95) className = 'bg-perfect'; // Basically Perfect Score (Bright Blue)
@@ -23,6 +32,41 @@ export const getScoreColorClass = (score: number, hoverable = false) => {
   return className;
 };
 
+/**
+ * Gets the color class for a score based on its value for OpenCritic.
+ * 
+ *
+ * @param score - The score value to get the color class for
+ * @returns The color tailwind css class for the score className.
+ */
+export const getOpenCriticScoreClass = (score: number) => {
+  if (score >= 90) return 'bg-mighty' // Positive reviews (orange)
+  else if (score >= 75 && score < 90) return "bg-strong"; // Mixed reviews (purple)
+  else if (score >= 65 && score < 75) return "bg-fair"; // Mixed reviews (blue)
+  else if (score >= 0 && score < 65) return "bg-weak"; // Negative reviews (green)
+  else return 'bg-zinc-500';
+}
+
+/**
+ * Gets the color class for a score based on its value for Steam.
+ * 
+ *
+ * @param score - The score value to get the color class for
+ * @returns The color tailwind css class for the score className.
+ */
+export const getSteamScoreClass = (score: number) => {
+  if (score >= 70) return 'text-positive' // Positive reviews (blue)
+  else if (score >= 40 && score < 70) return "text-mixed"; // Mixed reviews (orange)
+  else if (score < 40) return "text-negative"; // Negative reviews (red)
+  else return '';
+}
+
+/**
+ * Normalizes a string by converting it to lowercase, removing special characters, and trimming leading/trailing spaces.
+ *
+ * @param str - The string to normalize.
+ * @returns The normalized string.
+ */
 export const normalizeString = (str: string): string => {
   return str
     .toLowerCase()  // Lowercase for case insensitivity

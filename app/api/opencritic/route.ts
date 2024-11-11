@@ -1,24 +1,29 @@
 import { normalizeString } from '@/app/utility/helper';
 
 interface AppCacheEntry {
-  appId: number;
+  appId: number | undefined;
   expires: number;
 }
 
 interface AppDataCacheEntry {
-  id: number;
-  name: string;
-  releaseDate: string;
-  developer: string;
-  publisher: string;
-  capsuleImage: string;
-  criticScore: number;
-  userScore: number;
-  totalCriticReviews: number;
-  totalUserReviews: number;
-  url: string;
+  id: number | undefined;
+  name: string | undefined;
+  releaseDate: string | undefined;
+  developer: string | undefined;
+  publisher: string | undefined;
+  capsuleImage: string | undefined;
+  hasLootBoxes: boolean | undefined;
+  percentRec: number | undefined;
+  criticScore: number | undefined;
+  userScore: number | undefined;
+  totalCriticReviews: number | undefined;
+  totalUserReviews: number | undefined;
+  totalTopCriticReviews: number | undefined;
+  tier: { name: string | undefined; url: string | undefined } | undefined;
+  url: string | undefined;
   expires: number;
 }
+
 
 const appCache: Record<string, AppCacheEntry> = {};
 const appDataCache: Record<string, AppDataCacheEntry> = {};
@@ -100,10 +105,14 @@ async function getAppData(appId: number): Promise<AppDataCacheEntry> {
     const developer = data.Companies.find((c: { type: string }) => c.type.toLowerCase() === 'developer')?.name || data.Companies.find((c: { type: string }) => c.type.toLowerCase() === 'publisher')?.name;
     const publisher = data.Companies.find((c: { type: string }) => c.type.toLowerCase() === 'publisher')?.name || data.Companies.find((c: { type: string }) => c.type.toLowerCase() === 'developer')?.name;
     const capsuleImage = 'https://' + process.env.OPENCRITIC_IMG_HOST + '/' + data.images.box.og; // Box image
+    const hasLootBoxes = data.hasLootBoxes;
+    const percentRec = Math.round(data.percentRecommended);
     const criticScore = Math.round(data.topCriticScore);
     const userScore = -1;
     const totalCriticReviews = data.numReviews;
     const totalUserReviews = -1;
+    const totalTopCriticReviews = data.numTopCriticReviews;
+    const tier = { name: data.tier, url: 'https://' + process.env.OPENCRITIC_IMG_HOST + '/mighty-man/' + data.tier.toLowerCase() + '-man.png' };
     const ocUrl = data.url;
     
     const newEntry = {
@@ -113,10 +122,14 @@ async function getAppData(appId: number): Promise<AppDataCacheEntry> {
       developer,
       publisher,
       capsuleImage,
+      hasLootBoxes,
+      percentRec,
       criticScore,
       userScore,
       totalCriticReviews,
       totalUserReviews,
+      totalTopCriticReviews,
+      tier,
       url: ocUrl,
       expires: now + 86400 // Cache for one day
     };
@@ -132,13 +145,13 @@ async function getAppData(appId: number): Promise<AppDataCacheEntry> {
 // API Calls are limited to 25 searches per day and 200 requests per day
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const gameName = searchParams.get('gameName') || '';
+  const gameName = searchParams.get('name') || '';
 
   try {
     // Fetch the app ID from the game name and then fetch the app data. If the app ID is invalid and is in the cache, throw an error.
     const { appId } = (await getAppIDByName(gameName));
     if (appId === -1) throw new Error('OPENCRITIC: CACHED - Invalid App ID, status code: 404');
-    const data = await getAppData(appId);
+    const data = await getAppData(appId as number);
 
     return Response.json({ status: 200, ...data });
   } catch (error) {

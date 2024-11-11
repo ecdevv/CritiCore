@@ -6,6 +6,8 @@
   --background: #ffffff;
   --foreground: #171717;
 
+  --text-secondary: #C4C4C4;
+
   /* Color Map Scheme for Scores */
   --perfect: #2196F3;
   --excellent: #009E8F;
@@ -23,6 +25,17 @@
   --average-hover: #9B7A11;
   --bad-hover: #B35400;
   --miss-hover: #9D2127;
+
+  /* OpenCritic Color Map Scheme for Scores */
+  --mighty: #b93800;
+  --strong: #7b2d9f;
+  --fair: #3c8eb2;
+  --weak: #63a063;
+
+  /* Steam Color Map Scheme for Scores */
+  --positive: #97d0ff;
+  --mixed: #FFB800;
+  --negative: #E74C39;
 }
 
 @media (prefers-color-scheme: dark) {
