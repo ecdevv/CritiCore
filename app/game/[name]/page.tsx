@@ -87,7 +87,7 @@ export default async function Game({ params, searchParams }: { params: { name: s
     <div className='flex justify-center items-center min-h-screen p-8 bg-zinc-900'>
       {(responseStatus === 200 && validScores) ? (
         <>
-          <div className="flex justify-center items-center p-8 gap-12">
+          <section className="flex justify-center items-center p-8 gap-12">
             <Link href={capsuleImage} target="_blank" rel="noopener noreferrer" >
               <Image 
                 src={capsuleImage}
@@ -126,10 +126,10 @@ export default async function Game({ params, searchParams }: { params: { name: s
             {displayType === 'steam' &&
               <SteamDataCard pathname={pathname} referer={referer} data={steamData} name={displayName} releaseDate={releaseDate} developer={developer} currentScore={currentScores.steam} />
             }
-          </div>
+          </section>
         </>
       ) : (
-        <h1 className="text-4xl font-bold text-white text-center tracking-wide">Invalid Page</h1>
+        <section><h1 className="text-4xl font-bold text-white text-center tracking-wide">Invalid Page</h1></section>
       )}
     </div>
   );
