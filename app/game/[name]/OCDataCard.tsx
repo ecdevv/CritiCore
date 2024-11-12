@@ -17,7 +17,7 @@ interface Props {
 const LinkButton = ({ href, target = '_blank', rel = 'noopener noreferrer', className = 'group self-start p-2 bg-[#1E1E1E] shadow-box-card rounded-lg border-[1px] border-zinc-800', children}: Props) => {
   return (
     <Link 
-      href={href} 
+      href={href}
       target={target}
       rel={rel}
       className={className}
@@ -30,25 +30,25 @@ const LinkButton = ({ href, target = '_blank', rel = 'noopener noreferrer', clas
 interface OpenCriticDataCardProps {
   pathname: string;
   referer: string;
-  ocData: any;
+  data: any;
   name: string;
   releaseDate: string;
   developer: string;
   currentScore: number;
 }
 
-const OpenCriticDataCard = ({ pathname, referer, ocData, name, releaseDate, developer, currentScore}: OpenCriticDataCardProps) => {
-  const totalCriticReviews = ocData.totalCriticReviews >= 0 ? ocData.totalCriticReviews : 'N/A';
-  const hasLootBoxes = ocData.hasLootBoxes !== false && !ocData.hasLootBoxes ? 'N/A' : ocData.hasLootBoxes ? 'Yes' : 'No';
-  const percentRec = ocData.percentRec >= 0 ? ocData.percentRec : 'N/A';
-  const tierName = ocData.tier.name || 'N/A';
-  const tierImgUrl = ocData.tier.url || '/';
-  const ocUrl = ocData.url || 'https://www.opencritic.com/';
+const OCDataCard = ({ pathname, referer, data, name, releaseDate, developer, currentScore}: OpenCriticDataCardProps) => {
+  const totalCriticReviews = data.totalCriticReviews >= 0 ? data.totalCriticReviews : 'N/A';
+  const hasLootBoxes = data.hasLootBoxes !== false && !data.hasLootBoxes ? 'N/A' : data.hasLootBoxes ? 'Yes' : 'No';
+  const percentRec = data.percentRec >= 0 ? data.percentRec : 'N/A';
+  const tierName = data.tier.name || 'N/A';
+  const tierImgUrl = data.tier.url || '/';
+  const ocUrl = data.url || 'https://www.opencritic.com/';
   const score = currentScore >= 0 ? currentScore : -1;
 
   return (
     <div className="relative w-[700px] flex flex-col items-center p-8 gap-5">
-      <BackButton pathname={pathname} referer={referer} className="group absolute top-2 left-5 self-start p-1 bg-[#1E1E1E] shadow-box-card rounded-lg border-[1px] border-zinc-800">
+      <BackButton pathname={pathname} referer={referer} className="group absolute top-[-30px] left-1/2 translate-x-[-50%] self-start p-1 bg-[#1E1E1E] shadow-box-card rounded-lg border-[1px] border-zinc-800">
         <TbArrowBackUp size={32} className='group-hover:text-[#62BEF0] transition-colors duration-100 ease-in-out'/>
       </BackButton>
       <h1 className="text-4xl font-bold text-white text-center tracking-wide">{name}</h1>
@@ -61,7 +61,7 @@ const OpenCriticDataCard = ({ pathname, referer, ocData, name, releaseDate, deve
             <Image src={tierImgUrl} alt={tierName} width={75} height={75} className='self-center'/>
           </div>
           <div className="flex flex-col gap-3 text-white">
-            <ScoreBox status={ocData.status} target={true} score={score}>OpenCritic</ScoreBox>
+            <ScoreBox status={data.status} target={true} score={score}>OpenCritic</ScoreBox>
             <div className={`${getOpenCriticScoreClass(score)} w-[125px] flex flex-col p-4 justify-center items-center text-center shadow-box-card rounded-lg bg-[#1E1E1E] border-[1px] border-zinc-800`}>
               <h2 className="text-4xl font-bold">{percentRec}{percentRec !== 'N/A' ? '%' : ''}</h2>
               <p className="text-sm">Critics Recommend</p>
@@ -76,4 +76,4 @@ const OpenCriticDataCard = ({ pathname, referer, ocData, name, releaseDate, deve
   )
 };
 
-export default OpenCriticDataCard
+export default OCDataCard

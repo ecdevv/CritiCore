@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { headers } from "next/headers";
 import ScoreBox from "@/app/components/score/ScoreBox";
-import OpenCriticDataCard from "./OpenCriticDataCard";
+import OCDataCard from "./OCDataCard";
 import SteamDataCard from "./SteamDataCard";
 
 type ReviewType = "all" | "critic" | "user" ;
@@ -37,7 +37,7 @@ export default async function Game({ params, searchParams }: { params: { name: s
   const displayName = ocData.name || steamData.name || 'N/A';
   const releaseDate = ocData.releaseDate || steamData.releaseDate || 'N/A';
   const developer = ocData.developer || steamData.developer || 'N/A';
-  const capsuleImage = steamData.capsuleImage || ocData.capsuleImage || sgdbData.capsuleImage || '';
+  const capsuleImage = steamData.capsuleImage || ocData.capsuleImage || sgdbData.capsuleImage || '/';
   const validScores = ocData.criticScore >= 0 || ocData.userScore >= 0 || steamData.criticScore >= 0 || steamData.userScore >= 0;
   
   const scores = {
@@ -121,10 +121,10 @@ export default async function Game({ params, searchParams }: { params: { name: s
               </div>
             )}
             {displayType === 'opencritic' &&
-              <OpenCriticDataCard pathname={pathname} referer={referer} ocData={ocData} name={displayName} releaseDate={releaseDate} developer={developer} currentScore={currentScores.opencritic} />
+              <OCDataCard pathname={pathname} referer={referer} data={ocData} name={displayName} releaseDate={releaseDate} developer={developer} currentScore={currentScores.opencritic} />
             }
             {displayType === 'steam' &&
-              <SteamDataCard pathname={pathname} referer={referer} steamData={steamData} name={displayName} releaseDate={releaseDate} developer={developer} currentScore={currentScores.steam} />
+              <SteamDataCard pathname={pathname} referer={referer} data={steamData} name={displayName} releaseDate={releaseDate} developer={developer} currentScore={currentScores.steam} />
             }
           </div>
         </>

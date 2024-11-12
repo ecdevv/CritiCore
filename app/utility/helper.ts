@@ -1,4 +1,5 @@
 // app/utility/helper.ts
+
 /**
  * Gets the color class for a score based on its value.
  * Also has hover variants
