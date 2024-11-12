@@ -1,7 +1,7 @@
 import { normalizeString } from '@/app/utility/helper';
 
 interface AppCacheEntry {
-  appId: number | undefined;
+  appid: number | undefined;
   expires: number;
 }
 
@@ -48,7 +48,7 @@ async function getAppIDByName(name: string): Promise<AppCacheEntry> {
         'x-rapidapi-host': process.env.OPENCRITIC_API_HOST || ''
       }
     };
-    const response = await fetch(url, options);
+    const response = await fetch(url, { ...options, cache: 'force-cache' });
     if (!response.ok) {
       throw new Error(`Failed to fetch search data, status code: ${response.status}`);
     }
@@ -57,41 +57,41 @@ async function getAppIDByName(name: string): Promise<AppCacheEntry> {
 
     // Find the app with the shortest distance value that is below 0.03 for the most accurate return
     const apps = data as Array<{ id: number; name: string; dist: number }>;
-    const { id: appId } = apps.reduce(
+    const { id: appid } = apps.reduce(
       (min, current) => (current.dist < min.dist && current.dist < 0.03 ? current : min),
       { id: -1, dist: Infinity }
     );
     console.log(apps);
-    if (appId === -1) throw new Error('Invalid App ID, status code: 404');
+    if (appid === -1) throw new Error('Invalid App ID, status code: 404');
 
     const newEntry = { 
-      appId, 
+      appid, 
       expires: now + 86400  // Cache for one day
     };
 
     appCache[cacheKey] = newEntry;
     return newEntry;
   } catch (error) {
-    const newEntry = { appId: -1, expires: now + 86400 };
+    const newEntry = { appid: -1, expires: now + 86400 };
     appCache[cacheKey] = newEntry;
     console.log(`OPENCRITIC: Error retrieving search data`);
     throw error;
   }
 }
 
-async function getAppData(appId: number): Promise<AppDataCacheEntry> {
-  const cacheKey = `app-${appId}`;
+async function getAppData(appid: number): Promise<AppDataCacheEntry> {
+  const cacheKey = `app-${appid}`;
   const now = Date.now() / 1000;
   const cachedEntry = appDataCache[cacheKey];
 
   if (cachedEntry && cachedEntry.expires > now) {
-    console.log(`OPENCRITIC: Returning cached app data for game id: ${appId}`);
+    console.log(`OPENCRITIC: Returning cached app data for game id: ${appid}`);
     return cachedEntry;
   }
 
   try {
     // Fetch game data based on the app ID
-    const url = `${process.env.OPENCRITIC_API_GAME}/${appId}`;
+    const url = `${process.env.OPENCRITIC_API_GAME}/${appid}`;
     const options = {
       method: 'GET',
       headers: {
@@ -110,7 +110,6 @@ async function getAppData(appId: number): Promise<AppDataCacheEntry> {
     const releaseDate = `${date.toLocaleString('default', { month: 'long' })} ${date.getDate()}, ${date.getFullYear()}`;
     const developer = data.Companies.find((c: { type: string }) => c.type.toLowerCase() === 'developer')?.name || data.Companies.find((c: { type: string }) => c.type.toLowerCase() === 'publisher')?.name;
     const publisher = data.Companies.find((c: { type: string }) => c.type.toLowerCase() === 'publisher')?.name || data.Companies.find((c: { type: string }) => c.type.toLowerCase() === 'developer')?.name;
-    const capsuleImage = 'https://' + process.env.OPENCRITIC_IMG_HOST + '/' + data.images.box.og; // Box image
     const hasLootBoxes = data.hasLootBoxes;
     const percentRec = Math.round(data.percentRecommended);
     const criticScore = Math.round(data.topCriticScore);
@@ -121,8 +120,14 @@ async function getAppData(appId: number): Promise<AppDataCacheEntry> {
     const tier = { name: data.tier, url: 'https://' + process.env.OPENCRITIC_IMG_HOST + '/mighty-man/' + data.tier.toLowerCase() + '-man.png' };
     const ocUrl = data.url;
     
+    // Fetch capsule image to ensure it exists, otherwise return undefined capsuleImage
+    const capsuleImageUrl = 'https://' + process.env.OPENCRITIC_IMG_HOST + '/' + data.images.box.og; // Box image
+    const capsuleImageResponse = await fetch(capsuleImageUrl, { method: 'HEAD' });
+    const capsuleImage = capsuleImageResponse.ok ? capsuleImageUrl : undefined;
+
+    
     const newEntry = {
-      id: appId,
+      id: appid,
       name,
       releaseDate,
       developer,
@@ -143,21 +148,21 @@ async function getAppData(appId: number): Promise<AppDataCacheEntry> {
     appDataCache[cacheKey] = newEntry;
     return newEntry;
   } catch (error) {
-    console.log(`OPENCRITIC: Error retrieving app data for app ID: ${appId}`);
+    console.log(`OPENCRITIC: Error retrieving app data for app ID: ${appid}`);
     throw error;
   }
 }
 
 // API Calls are limited to 25 searches per day and 200 requests per day
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const gameName = searchParams.get('name') || '';
+  const { pathname } = new URL(request.url);
+  const gameName = pathname.split('/').pop() as string || '';
 
   try {
     // Fetch the app ID from the game name and then fetch the app data. If the app ID is invalid and is in the cache, throw an error.
-    const { appId } = (await getAppIDByName(gameName));
-    if (appId === -1) throw new Error('CACHED - Invalid App ID, status code: 404');
-    const data = await getAppData(appId as number);
+    const { appid } = (await getAppIDByName(gameName));
+    if (appid === -1) throw new Error('CACHED - Invalid App ID, status code: 404');
+    const data = await getAppData(appid as number);
 
     return Response.json({ status: 200, ...data });
   } catch (error) {

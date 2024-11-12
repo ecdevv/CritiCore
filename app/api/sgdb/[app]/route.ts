@@ -45,8 +45,8 @@ async function getSGDBImage(name: string): Promise<SDGBCacheEntry> {
 }
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const gameName = searchParams.get('name') || '';
+  const { pathname } = new URL(request.url);
+  const gameName = pathname.split('/').pop() as string || '';
   const name = normalizeString(gameName);
 
   try {

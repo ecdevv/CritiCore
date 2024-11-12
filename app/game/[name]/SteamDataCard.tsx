@@ -5,6 +5,7 @@ import { TbArrowBackUp } from 'react-icons/tb'
 import BackButton from '@/app/components/common/BackButton'
 import ScoreBox from '@/app/components/score/ScoreBox'
 import { getSteamScoreClass } from '@/app/utility/helper'
+import { SteamData } from '@/app/utility/types'
 
 interface Props {
   href: string;
@@ -29,7 +30,7 @@ const LinkButton = ({ href, target = '_blank', rel = 'noopener noreferrer', clas
 interface SteamDataCardProps {
   pathname: string;
   referer: string;
-  data: any;
+  data: SteamData;
   name: string;
   releaseDate: string;
   developer: string;
@@ -37,14 +38,14 @@ interface SteamDataCardProps {
 }
 
 const SteamDataCard = ({ pathname, referer, data, name, releaseDate, developer, currentScore }: SteamDataCardProps) => {
-  const totalReviews = data.totalReviews >= 0 ? data.totalReviews : 'N/A';
-  const totalPositive = data.totalPositive >= 0 ? data.totalPositive : 'N/A';
-  const totalNegative = data.totalNegative >= 0 ? data.totalNegative : 'N/A';
-  const currentPlayers = data.currentPlayers >= 0 ? data.currentPlayers : 'N/A';
+  const totalReviews = typeof data.totalReviews === 'number' && data.totalReviews >= 0 ? data.totalReviews : 'N/A';
+  const totalPositive = typeof data.totalPositive === 'number' && data.totalPositive >= 0 ? data.totalPositive : 'N/A';
+  const totalNegative = typeof data.totalNegative === 'number' && data.totalNegative >= 0 ? data.totalNegative : 'N/A';
+  const currentPlayers = typeof data.currentPlayers === 'number' && data.currentPlayers >= 0 ? data.currentPlayers : 'N/A';
   const reviewDesc = data.reviewDesc || 'N/A';
   const steamUrl = data.url || 'https://store.steampowered.com/app/';
   const devUrl = data.devUrl || 'https://store.steampowered.com/developer/';
-  const score = currentScore >= 0 ? currentScore : -1;
+  const score = typeof currentScore === 'number' && currentScore >= 0 ? currentScore : -1;
 
   return (
     <div className="relative w-[700px] flex flex-col items-center p-8 gap-5">
@@ -64,7 +65,7 @@ const SteamDataCard = ({ pathname, referer, data, name, releaseDate, developer, 
           <div className="flex flex-col gap-3 text-white">
             <ScoreBox status={data.status} target={true} score={score}>Steam</ScoreBox>
             <div className="w-[125px] flex flex-col p-2 justify-center items-center text-center bg-[#1E1E1E] shadow-box-card rounded-lg border-[1px] border-zinc-800">
-              <h2 className="text-3xl font-bold">{currentPlayers}</h2>
+              <h2 className="text-3xl font-bold tracking-wide">{currentPlayers}</h2>
               <p className="text-base">In-Game</p>
             </div>
           </div>

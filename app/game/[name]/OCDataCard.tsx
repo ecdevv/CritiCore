@@ -5,6 +5,7 @@ import { FaSteam } from 'react-icons/fa'
 import { TbArrowBackUp } from 'react-icons/tb'
 import BackButton from '@/app/components/common/BackButton'
 import ScoreBox from '@/app/components/score/ScoreBox'
+import { OCData } from '@/app/utility/types'
 import { getOpenCriticScoreClass } from '@/app/utility/helper'
 
 interface Props {
@@ -30,7 +31,7 @@ const LinkButton = ({ href, target = '_blank', rel = 'noopener noreferrer', clas
 interface OpenCriticDataCardProps {
   pathname: string;
   referer: string;
-  data: any;
+  data: OCData;
   name: string;
   releaseDate: string;
   developer: string;
@@ -38,9 +39,9 @@ interface OpenCriticDataCardProps {
 }
 
 const OCDataCard = ({ pathname, referer, data, name, releaseDate, developer, currentScore}: OpenCriticDataCardProps) => {
-  const totalCriticReviews = data.totalCriticReviews >= 0 ? data.totalCriticReviews : 'N/A';
+  const totalCriticReviews = typeof data.totalCriticReviews === 'number' && data.totalCriticReviews >= 0 ? data.totalCriticReviews : 'N/A';
   const hasLootBoxes = data.hasLootBoxes !== false && !data.hasLootBoxes ? 'N/A' : data.hasLootBoxes ? 'Yes' : 'No';
-  const percentRec = data.percentRec >= 0 ? data.percentRec : 'N/A';
+  const percentRec = typeof data.percentRec === 'number' && data.percentRec >= 0 ? data.percentRec : 'N/A';
   const tierName = data.tier.name || 'N/A';
   const tierImgUrl = data.tier.url || '/';
   const ocUrl = data.url || 'https://www.opencritic.com/';

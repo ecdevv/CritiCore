@@ -1,12 +1,48 @@
+import { headers } from "next/headers";
 import Image from "next/image";
 import CardGrid from "./components/card/CardGrid";
 import Link from "next/link";
+import { TopCategories } from "@/app/utility/types"
 
-export default function Home() {
+export default async function Home() {
+  const headersList = await headers();
+  const baseUrl = headersList.get('x-base-url') || '';
+  
+  const response = await fetch(`${baseUrl}/api/steam`);
+  const { topReleases, mostPlayed } = await response.json();
+  
+  const topReleasesData = topReleases[0].appids.slice(0, 10).map(async (appid: number) => {
+    const gameResponse = await fetch(`${baseUrl}/api/steam/${appid}`);
+    return await gameResponse.json();
+  });
+  const mostPlayedData = mostPlayed.slice(0, 10).map(async (game: { appid: number }) => {
+    const gameResponse = await fetch(`${baseUrl}/api/steam/${game.appid}`);
+    return await gameResponse.json();
+  });
+  const [topReleasesDataRes, mostPlayedDataRes] = await Promise.all([Promise.all(topReleasesData), Promise.all(mostPlayedData)]);
+  
+  const topReleasesDataFinal = topReleasesDataRes.map((game: TopCategories) => ({
+    category: 'Top Releases',
+    id: game.id,
+    name: game.name,
+    releaseDate: game.releaseDate,
+    developer: game.developer,
+    capsuleImage: game.capsuleImage,
+  }));
+  const mostPlayedDataFinal = mostPlayedDataRes.map((game: TopCategories) => ({
+    category: 'Most Played',
+    id: game.id,
+    name: game.name,
+    releaseDate: game.releaseDate,
+    developer: game.developer,
+    capsuleImage: game.capsuleImage,
+  }));
+
   return (
-    <div className="min-h-screen p-8 bg-zinc-900">
-      <div className="flex flex-col items-center">
-        <CardGrid headerText="Most Popular" />
+    <div className="flex justify-center items-start min-h-screen p-8 bg-zinc-900">
+      <div className="flex flex-col items-center p-8">
+        <CardGrid categoryData={topReleasesDataFinal}/>
+        <CardGrid categoryData={mostPlayedDataFinal}/>
         <div className="flex gap-4 items-center flex-col sm:flex-row">
           <Link
             className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
@@ -35,3 +71,4 @@ export default function Home() {
     </div>
   );
 }
+

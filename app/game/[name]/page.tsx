@@ -13,7 +13,12 @@ type Scores = {
   steam: { critic: number; user: number };
 };
 
-export default async function Game({ params, searchParams }: { params: { name: string }, searchParams: { type: ReviewType, display: DisplayType } }) {
+interface GameProps {
+  params: Promise<{ name: string }>;
+  searchParams: Promise<{ type: ReviewType; display: DisplayType }>;
+}
+
+export default async function Game({ params, searchParams }: GameProps) {
   const headersList = await headers();
   const baseUrl = headersList.get('x-base-url') || '';
   const pathname = headersList.get('x-pathname') || '';
@@ -23,15 +28,15 @@ export default async function Game({ params, searchParams }: { params: { name: s
   const name = (await params).name || '';
 
   // Fetching API data from Metacritic, OpenCritic, and Steam. OpenCritic API is limited to 25 searches per day and 200 requests per day, so usually using dummy data
-  // const ocResponse = await fetch(`${baseUrl}/api/opencritic?name=${name}`);
+  // const ocResponse = await fetch(`${baseUrl}/api/opencritic/${name}`);
   // const ocData = await ocResponse.json();
-  const ocData = {status: 200, name: undefined, releaseDate: undefined, developer: undefined, capsuleImage: undefined, 
-    hasLootBoxes: true, percentRec: 74, criticScore: 81, userScore: -1, totalCriticReviews: 84, totalUserReviews: -1, 
-    tier: { name: 'Strong', url: 'https://' + process.env.OPENCRITIC_IMG_HOST + '/mighty-man/' + 'strong' + '-man.png' 
-  }};
-  const steamResponse = await fetch(`${baseUrl}/api/steam?${new URLSearchParams({ name, display: displayType })}`);
+  const ocData = {status: 200, id: undefined, name: undefined, releaseDate: undefined, developer: undefined, publisher: undefined, capsuleImage: undefined, 
+    hasLootBoxes: true, percentRec: 74, criticScore: 81, userScore: -1, reviewDesc: 'N/A', totalCriticReviews: 84, totalUserReviews: -1, totalTopCriticReviews: -1,
+    tier: { name: 'Strong', url: 'https://' + process.env.OPENCRITIC_IMG_HOST + '/mighty-man/' + 'strong' + '-man.png'}, url: 'https://opencritic.com/'
+  };
+  const steamResponse = await fetch(`${baseUrl}/api/steam/${name}?${new URLSearchParams({ display: displayType })}`);
   const steamData = await steamResponse.json();
-  const sgdbResponse = await fetch(`${baseUrl}/api/sgdb?${new URLSearchParams({ name })}`);
+  const sgdbResponse = await fetch(`${baseUrl}/api/sgdb/${name}`);
   const sgdbData = await sgdbResponse.json();
   const responseStatus = ocData.status === 200 || steamData.status === 200 ? 200 : 404;
   const displayName = ocData.name || steamData.name || 'N/A';
@@ -50,13 +55,13 @@ export default async function Game({ params, searchParams }: { params: { name: s
     // Filter out scores that are not available;
     const validCriticScores = Object.entries(scores).filter(([, { critic }]) => critic >= 0);
     const validUserScores = Object.entries(scores).filter(([, { user }]) => user >= 0);
-    const allValidScores = Object.entries(scores).flatMap(([_, { critic, user }]) => [critic, user].filter(score => score >= 0));
+    const allValidScores = Object.entries(scores).flatMap(([, { critic, user }]) => [critic, user].filter(score => score >= 0));
     
     const criticAverage = validCriticScores.length > 0
-      ? Math.round(validCriticScores.reduce((sum, [_, { critic }]) => sum + critic, 0) / validCriticScores.length)
+      ? Math.round(validCriticScores.reduce((sum, [, { critic }]) => sum + critic, 0) / validCriticScores.length)
       : -1;
     const userAverage = validUserScores.length > 0
-      ? Math.round(validUserScores.reduce((sum, [_, { user }]) => sum + user, 0) / validUserScores.length)
+      ? Math.round(validUserScores.reduce((sum, [, { user }]) => sum + user, 0) / validUserScores.length)
       : -1;
     const overallAverage = allValidScores.length > 0
       ? Math.round(allValidScores.reduce((sum, score) => sum + score, 0) / allValidScores.length)

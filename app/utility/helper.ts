@@ -78,3 +78,57 @@ export const normalizeString = (str: string): string => {
     .replace(/\b(edition|ultimate|definitive|game of the year|enhanced|campaign)\b/gi, '')  // Remove common suffixes
     .trim();  // Remove leading/trailing spaces
 };
+
+/**
+ * Normalizes a string by converting it to lowercase, removing special characters, and trimming leading/trailing spaces.
+ *
+ * @param str - The string to normalize.
+ * @returns The normalized string.
+ */
+export const normalizeStringWithDashes = (str: string): string => {
+  return str
+    .toLowerCase()  // Lowercase for case insensitivity
+    .replace(/[\u00A9\u2122\u00AE\u2013\u2014\u2020\u2021]/g, '')  // Remove ©, ™, ®, and other symbols
+    .replace(/\//g, ' ')  // Normalize forward slashes to spaces
+    .replace(/[^\w\s-]/g, '')  // Remove any non-word characters, except for spaces and hyphens
+    .replace(/[\s\-]+/g, '-') // Normalize spaces and hyphens to a single space
+    .replace(/\b(edition|ultimate|definitive|game of the year|enhanced|campaign)\b/gi, '')  // Remove common suffixes
+    .trim();  // Remove leading/trailing spaces
+};
+
+/**
+ * Calculates the normalized Levenshtein distance between two strings using the iterative-with-two-rows method.
+ *
+ * @param a - The first string.
+ * @param b - The second string.
+ * @returns The normalized Levenshtein distance from 0 (exactly equal) to 1 (completely different).
+ */
+export const levenshteinDistanceNormalized = (a: string, b: string): number => {
+  if (a.length < b.length) {
+    [a, b] = [b, a];
+  }
+
+  const m = a.length;
+  const n = b.length;
+
+  let d0 = Array(n + 1).fill(0);
+  let d1 = Array(n + 1).fill(0);
+
+  for (let j = 0; j <= n; j++) {
+    d0[j] = j;
+  }
+
+  for (let i = 1; i <= m; i++) {
+    const c1 = a[i - 1];
+    d1[0] = i;
+
+    for (let j = 1; j <= n; j++) {
+      const cost = c1 === b[j - 1] ? 0 : 1;
+      d1[j] = Math.min(d1[j - 1] + 1, d0[j] + 1, d0[j - 1] + cost);
+    }
+
+    [d0, d1] = [d1, d0];
+  }
+
+  return d0[n] / Math.max(m, n);
+};

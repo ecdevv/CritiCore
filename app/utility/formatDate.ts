@@ -27,39 +27,36 @@ const formats = [
   'yyyy-MM-dd',       // e.g., "2022-02-24"
   'yyyy年MM月dd日',    // e.g., "2022年02月24日" (Chinese)
   'dd.MM.yyyy',       // e.g., "24.02.2022" (German)
-  'dd-MM-yyyy'        // e.g., "24-02-2022" (Dutch)
+  'dd-MM-yyyy',        // e.g., "24-02-2022" (Dutch)
+  'MMM yyyy',         // e.g., "Feb 2022"
 ];
 
 export function formatDate(dateStr: string): string {
   let parsedDate: Date | null = null;
 
   for (const fmt of formats) {
-    try {
-      // Try parsing with English locale first
-      parsedDate = parse(dateStr, fmt, new Date(), { locale: enUS });
-      if (!isNaN(parsedDate.getTime())) break;
-    } catch (error) {
-      // Try the next format
+    for (const locale of [enUS, fr, zhCN]) {
+      try {
+        parsedDate = parse(dateStr, fmt, new Date(), { locale });
+        if (!isNaN(parsedDate.getTime())) break;
+      } catch {
+        continue;
+      }
     }
-
-    // Try parsing with French locale if English fails
-    try {
-      parsedDate = parse(dateStr, fmt, new Date(), { locale: fr });
-      if (!isNaN(parsedDate.getTime())) break;
-    } catch (error) {
-      // Try the next format
-    }
-
-    // Try parsing with Chinese locale if French fails
-    try {
-      parsedDate = parse(dateStr, fmt, new Date(), { locale: zhCN });
-      if (!isNaN(parsedDate.getTime())) break;
-    } catch (error) {
-      // Try the next format
-    }
+    if (parsedDate && !isNaN(parsedDate.getTime())) break;
   }
 
-  return parsedDate && !isNaN(parsedDate.getTime())
-    ? format(parsedDate, 'MMMM d, yyyy', { locale: enUS })
-    : 'Invalid date';
+  if (parsedDate && !isNaN(parsedDate.getTime())) {
+    const parsedYear = format(parsedDate, 'yyyy', { locale: enUS });
+    const parsedMonth = format(parsedDate, 'MMMM', { locale: enUS });
+    const parsedDay = format(parsedDate, 'd', { locale: enUS });
+
+    if (parsedDay === '1') {
+      return `${parsedMonth} ${parsedYear}`;
+    } else {
+      return `${parsedMonth} ${parsedDay}, ${parsedYear}`;
+    }
+  } else {
+    return 'Invalid Date';
+  }
 }
