@@ -41,8 +41,8 @@ export const getScoreColorClass = (score: number, hoverable = false) => {
  * @returns The color tailwind css class for the score className.
  */
 export const getOpenCriticScoreClass = (score: number) => {
-  if (score >= 90) return 'bg-mighty' // Positive reviews (orange)
-  else if (score >= 75 && score < 90) return "bg-strong"; // Mixed reviews (purple)
+  if (score >= 85) return 'bg-mighty' // Positive reviews (orange)
+  else if (score >= 75 && score < 85) return "bg-strong"; // Mixed reviews (purple)
   else if (score >= 65 && score < 75) return "bg-fair"; // Mixed reviews (blue)
   else if (score >= 0 && score < 65) return "bg-weak"; // Negative reviews (green)
   else return 'bg-zinc-500';

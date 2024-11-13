@@ -54,6 +54,7 @@ async function getStoreData(): Promise<StoreDataCacheEntry> {
   }
 }
 
+// TODO: Fix isHomepage/url being unused
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const isHomepage = url.pathname === '/';

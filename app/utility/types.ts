@@ -14,7 +14,6 @@ export type OCData = {
   releaseDate: string | undefined;
   developer: string | undefined;
   publisher: string | undefined;
-  capsuleImage: string | undefined;
   hasLootBoxes: boolean | undefined;
   percentRec: number | 'N/A' | undefined;
   criticScore: number | 'N/A' | undefined;
@@ -24,6 +23,7 @@ export type OCData = {
   totalUserReviews: number | 'N/A' | undefined;
   totalTopCriticReviews: number | 'N/A' | undefined;
   tier: { name: string | undefined; url: string | undefined };
+  capsuleImage: string | undefined;
   url: string | undefined;
 }
 
@@ -35,10 +35,6 @@ export type SteamData = {
   developer: string | undefined;
   publisher: string | undefined;
   ageRating: number | undefined;
-  headerImage: string | undefined;
-  capsuleImage: string | undefined;
-  url: string | undefined;
-  devUrl: string | undefined;
   criticScore: number | 'N/A' | undefined;
   userScore: number | 'N/A' | undefined;
   reviewDesc: string | undefined;
@@ -46,4 +42,8 @@ export type SteamData = {
   totalNegative: number | 'N/A' | undefined;
   totalReviews: number | 'N/A' | undefined;
   currentPlayers?: number | undefined;
+  headerImage: string | undefined;
+  capsuleImage: string | undefined;
+  url: string | undefined;
+  devUrl: string | undefined;
 }

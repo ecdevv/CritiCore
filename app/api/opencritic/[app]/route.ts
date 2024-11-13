@@ -11,7 +11,6 @@ interface AppDataCacheEntry {
   releaseDate: string | undefined;
   developer: string | undefined;
   publisher: string | undefined;
-  capsuleImage: string | undefined;
   hasLootBoxes: boolean | undefined;
   percentRec: number | undefined;
   criticScore: number | undefined;
@@ -20,6 +19,7 @@ interface AppDataCacheEntry {
   totalUserReviews: number | undefined;
   totalTopCriticReviews: number | undefined;
   tier: { name: string | undefined; url: string | undefined } | undefined;
+  capsuleImage: string | undefined;
   url: string | undefined;
   expires: number;
 }
@@ -61,7 +61,6 @@ async function getAppIDByName(name: string): Promise<AppCacheEntry> {
       (min, current) => (current.dist < min.dist && current.dist < 0.03 ? current : min),
       { id: -1, dist: Infinity }
     );
-    console.log(apps);
     if (appid === -1) throw new Error('Invalid App ID, status code: 404');
 
     const newEntry = { 
@@ -119,12 +118,11 @@ async function getAppData(appid: number): Promise<AppDataCacheEntry> {
     const totalTopCriticReviews = data.numTopCriticReviews;
     const tier = { name: data.tier, url: 'https://' + process.env.OPENCRITIC_IMG_HOST + '/mighty-man/' + data.tier.toLowerCase() + '-man.png' };
     const ocUrl = data.url;
-    
+
     // Fetch capsule image to ensure it exists, otherwise return undefined capsuleImage
     const capsuleImageUrl = 'https://' + process.env.OPENCRITIC_IMG_HOST + '/' + data.images.box.og; // Box image
     const capsuleImageResponse = await fetch(capsuleImageUrl, { method: 'HEAD' });
     const capsuleImage = capsuleImageResponse.ok ? capsuleImageUrl : undefined;
-
     
     const newEntry = {
       id: appid,
@@ -132,7 +130,6 @@ async function getAppData(appid: number): Promise<AppDataCacheEntry> {
       releaseDate,
       developer,
       publisher,
-      capsuleImage,
       hasLootBoxes,
       percentRec,
       criticScore,
@@ -141,6 +138,7 @@ async function getAppData(appid: number): Promise<AppDataCacheEntry> {
       totalUserReviews,
       totalTopCriticReviews,
       tier,
+      capsuleImage,
       url: ocUrl,
       expires: now + 86400 // Cache for one day
     };

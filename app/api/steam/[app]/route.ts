@@ -20,16 +20,16 @@ interface AppDataCacheEntry {
   developer: string | undefined;
   publisher: string | undefined;
   ageRating: number | undefined;
-  headerImage: string | undefined;
-  capsuleImage: string | undefined;
-  url: string | undefined;
-  devUrl: string | undefined;
   criticScore: number | undefined;
   userScore: number | undefined;
   reviewDesc: string | undefined;
   totalPositive: number | undefined;
   totalNegative: number | undefined;
   totalReviews: number | undefined;
+  url: string | undefined;
+  devUrl: string | undefined;
+  headerImage: string | undefined;
+  capsuleImage: string | undefined;
   expires: number;
 }
 interface SteamMoreDataCacheEntry {
@@ -62,7 +62,7 @@ async function getAppList(): Promise<SteamAppList> {
     // Extract data from the response
     const appList = data.applist.apps;
 
-    appListCache[cacheKey] = { appList, expires: now + 86400 };
+    appListCache[cacheKey] = { appList, expires: now + 3600 };
     return appList;
   } catch (error) {
     appListCache[cacheKey] = { appList: [], expires: 0 };
@@ -157,16 +157,16 @@ async function getAppData(appid: number): Promise<AppDataCacheEntry> {
       developer,
       publisher,
       ageRating,
-      headerImage,
-      capsuleImage,
-      url,
-      devUrl,
       criticScore,
       userScore,
       reviewDesc,
       totalPositive,
       totalNegative,
       totalReviews,
+      headerImage,
+      capsuleImage,
+      url,
+      devUrl,
       expires: now + 600  // 10 minutes
     };
 
@@ -208,7 +208,7 @@ async function getSteamMoreData(displayType: string, appid: number): Promise<Ste
 
     const newEntry = {
       currentPlayers,
-      expires: now + 600
+      expires: now + 300
     };
 
     steamMoreDataCache[cacheKey] = newEntry;

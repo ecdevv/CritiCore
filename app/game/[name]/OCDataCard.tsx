@@ -1,12 +1,12 @@
 import React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { FaSteam } from 'react-icons/fa'
 import { TbArrowBackUp } from 'react-icons/tb'
 import BackButton from '@/app/components/common/BackButton'
 import ScoreBox from '@/app/components/score/ScoreBox'
 import { OCData } from '@/app/utility/types'
 import { getOpenCriticScoreClass } from '@/app/utility/helper'
+import ocLogo from '@/public/ocLogo.svg'
 
 interface Props {
   href: string;
@@ -15,7 +15,7 @@ interface Props {
   className?: string;
   children: React.ReactNode
 }
-const LinkButton = ({ href, target = '_blank', rel = 'noopener noreferrer', className = 'group self-start p-2 bg-[#1E1E1E] shadow-box-card rounded-lg border-[1px] border-zinc-800', children}: Props) => {
+const LinkButton = ({ href, target = '_blank', rel = 'noopener noreferrer', className, children}: Props) => {
   return (
     <Link 
       href={href}
@@ -47,10 +47,11 @@ const OCDataCard = ({ pathname, referer, data, name, releaseDate, developer, cur
   const ocUrl = data.url || 'https://www.opencritic.com/';
   const score = currentScore >= 0 ? currentScore : -1;
 
+  const linkBtnClass = 'group justify-center items-center max-h-[50px] p-2 bg-[#1E1E1E] shadow-box-card rounded-lg border-[1px] border-zinc-800 hover:scale-110 transition-all duration-100 ease-in-out';
   return (
-    <div className="relative w-[700px] flex flex-col items-center p-8 gap-5">
-      <BackButton pathname={pathname} referer={referer} className="group absolute top-[-30px] left-1/2 translate-x-[-50%] self-start p-1 bg-[#1E1E1E] shadow-box-card rounded-lg border-[1px] border-zinc-800">
-        <TbArrowBackUp size={32} className='group-hover:text-[#62BEF0] transition-colors duration-100 ease-in-out'/>
+    <div className="relative w-[725px] flex flex-col items-center p-8 gap-5">
+      <BackButton pathname={pathname} referer={referer} className="group absolute top-[-30px] left-1/2 translate-x-[-50%] p-[2px] bg-[#1E1E1E] shadow-box-card rounded-lg border-[1px] border-zinc-800">
+        <TbArrowBackUp size={32} className='group-hover:text-[#2196F3] transition-colors duration-100 ease-in-out'/>
       </BackButton>
       <h1 className="text-4xl font-bold text-white text-center tracking-wide">{name}</h1>
       <p className='text-white tracking-wide'>Released on <strong>{releaseDate}</strong> by <strong>{developer}</strong></p>
@@ -70,7 +71,9 @@ const OCDataCard = ({ pathname, referer, data, name, releaseDate, developer, cur
           </div>
         </div>
         <div className='flex flex-row justify-center gap-2'>
-          <LinkButton href={ocUrl}><FaSteam size={32} className='group-hover:fill-[#2196F3] transition-colors duration-100 ease-in-out' /></LinkButton>
+          <LinkButton href={ocUrl} className={linkBtnClass}>
+            <Image src={ocLogo} alt="OpenCritic Logo" width={32} height={32} className='group-hover:fill-[#2196F3] transition-all duration-100 ease-in-out' />
+          </LinkButton>
         </div>
       </div>
     </div>

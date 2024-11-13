@@ -11,7 +11,7 @@ const Card = ({ name, imgUrl }: { name: string; imgUrl: string; }) => {
         alt={name}
         width={300}
         height={600}
-        className='w-[200px] h-[300px] border-[1px] border-zinc-900 shadow-vertical-card rounded-xl transition-all duration-200 ease-in-out hover:cursor-pointer'
+        className='w-[200px] h-[300px] border-[1px] border-zinc-900 shadow-vertical-card rounded-xl transition-all duration-200 ease-in-out'
       />
     </Link>
   )
