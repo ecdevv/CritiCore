@@ -1,13 +1,6 @@
 import { normalizeString } from "@/app/utility/helper";
 import { formatDate } from "@/app/utility/formatDate";
 
-type SteamAppList = { appid: number; name: string; }[];
-
-interface AppListCacheEntry {
-  appList: { appid: number; name: string; }[] | [];
-  expires: number;
-}
-
 interface AppIDCacheEntry {
   matchingApps: { appid: number; name: string; }[] | [];
   expires: number;
@@ -37,53 +30,22 @@ interface SteamMoreDataCacheEntry {
   expires: number;
 }
 
-const appListCache: Record<string, AppListCacheEntry> = {};
 const appIDCache: Record<string, AppIDCacheEntry> = {};
 const appDataCache: Record<string, AppDataCacheEntry> = {};
 const steamMoreDataCache: Record<string, SteamMoreDataCacheEntry> = {};
 
-async function getAppList(): Promise<SteamAppList> {
-  const cacheKey = 'steam-applist';
-  const now = Date.now() / 1000;
-  const cachedEntry = appListCache[cacheKey];
-
-  if (cachedEntry && cachedEntry.expires > now) {
-    console.log('STEAM: Returning cached applist');
-    return cachedEntry.appList;
-  }
-
-  try {
-    // Fetch applist data
-    const response = await fetch(`${process.env.STEAM_API_APPLIST}`);
-    if (!response.ok) throw new Error(`Failed to fetch applist data, status code: ${response.status}`);
-    const data = await response.json();
-    if (!data) throw new Error('Invalid applist data, status code: 404');
-
-    // Extract data from the response
-    const appList = data.applist.apps;
-
-    appListCache[cacheKey] = { appList, expires: now + 3600 };
-    return appList;
-  } catch (error) {
-    appListCache[cacheKey] = { appList: [], expires: 0 };
-    console.log('STEAM: Error retrieving applist');
-    throw error;
-  }
-}
-
-async function getAppIDByName(name: string): Promise<AppIDCacheEntry> {
+async function getAppIDByName(baseUrl: string, name: string): Promise<AppIDCacheEntry> {
   const cacheKey = normalizeString(name);
   const now = Date.now() / 1000;
   const cachedEntry = appIDCache[cacheKey];
 
-  if (cachedEntry && cachedEntry.expires > now) {
-    console.log(`STEAM: Returning cached app id for game name: ${name}`);
-    return cachedEntry;
-  }
+  if (cachedEntry && cachedEntry.expires > now) return cachedEntry;
 
   try {
     // Fetch search data for app ID(s) based on the game name from params in url
-    const appList = await getAppList();
+    const appListResponse = await fetch(`${baseUrl}/api/steam/applist`);
+    const appListData = await appListResponse.json();
+    const appList = appListData.applist;
     const matchingApps = appList.filter((app: { appid: number, name: string; }) => normalizeString(app.name) === cacheKey);
     if (!matchingApps.length) throw new Error('No matching app(s) found, status code: 404');
 
@@ -107,19 +69,21 @@ async function getAppData(appid: number): Promise<AppDataCacheEntry> {
   const now = Date.now() / 1000;
   const cachedEntry = appDataCache[cacheKey];
 
-  if (cachedEntry && cachedEntry.expires > now) {
-    console.log(`STEAM: Returning cached app data for game id: ${appid}`);
-    return cachedEntry;
-  }
+  if (cachedEntry && cachedEntry.expires > now) return cachedEntry;
 
   try {
     // Fetch game data based on the app ID
-    const [detailsResponse, reviewsResponse] = await Promise.all([
+    const allResponses = await Promise.all([
       fetch(`${process.env.STEAM_API_APPDETAILS}?${new URLSearchParams({ appids: appid.toString() })}`),
       fetch(`${process.env.STEAM_API_APPREVIEWS}/${appid}?${new URLSearchParams({ json: '1', language: 'all', purchase_type: 'all' })}`),
     ]);
-    if (!detailsResponse.ok || !reviewsResponse.ok) {
-      throw new Error(`Failed to fetch app data, status code: ${(detailsResponse.ok ? detailsResponse.status : reviewsResponse.status)}`);
+    const [detailsResponse, reviewsResponse] = allResponses;
+    if (!allResponses) {
+      throw new Error('Failed to fetch app data, no responses available');
+    }
+    const failedResponse = allResponses.find(response => !response.ok);
+    if (failedResponse) {
+      throw new Error(`Failed to fetch app data, status code: ${failedResponse.status}`);
     }
     const [detailsData, reviewsData] = await Promise.all([
       detailsResponse.json(),
@@ -170,6 +134,13 @@ async function getAppData(appid: number): Promise<AppDataCacheEntry> {
       expires: now + 600  // 10 minutes
     };
 
+    // Cache the appIDCache for the normalized name to skip appIDByName calls since normalized names are === page's game name
+    const normalizedAppName = normalizeString(name);
+    if (normalizedAppName) {
+      const newAppIDCacheEntry = { matchingApps: [{ appid: id as number, name }], expires: now + 600 };
+      appIDCache[normalizedAppName] = newAppIDCacheEntry;
+    }
+
     appDataCache[cacheKey] = newEntry;
     return newEntry;
   } catch (error) {
@@ -185,10 +156,7 @@ async function getSteamMoreData(displayType: string, appid: number): Promise<Ste
   const now = Date.now() / 1000;
   const cachedEntry = steamMoreDataCache[cacheKey];
 
-  if (cachedEntry && cachedEntry.expires > now) {
-    console.log(`STEAM: Returning cached EXTRA app data for game id: ${appid}`);
-    return cachedEntry;
-  }
+  if (cachedEntry && cachedEntry.expires > now) return cachedEntry;
 
   try {
     // Fetch game data based on the app ID
@@ -196,8 +164,12 @@ async function getSteamMoreData(displayType: string, appid: number): Promise<Ste
       fetch(`${process.env.STEAM_API_NUM_PLAYERS}?${new URLSearchParams({ appid: appid.toString(), format: 'json' })}`),
     ]);
     const [numPlayersResponse] = allResponses
-    if (!allResponses || !numPlayersResponse.ok) {
-      throw new Error(`Failed to fetch EXTRA app data, status code: ${numPlayersResponse.status}`);
+    if (!allResponses) {
+      throw new Error('Failed to fetch app data, no responses available');
+    }
+    const failedResponse = allResponses.find(response => !response.ok);
+    if (failedResponse) {
+      throw new Error(`Failed to fetch EXTRA app data, status code: ${failedResponse.status}`);
     }
     const [numPlayersData] = await Promise.all([
       numPlayersResponse.json(),
@@ -208,7 +180,7 @@ async function getSteamMoreData(displayType: string, appid: number): Promise<Ste
 
     const newEntry = {
       currentPlayers,
-      expires: now + 300
+      expires: now + 300  // 5 minutes
     };
 
     steamMoreDataCache[cacheKey] = newEntry;
@@ -221,20 +193,21 @@ async function getSteamMoreData(displayType: string, appid: number): Promise<Ste
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const gameName = url.pathname.split('/').pop() as string || '';
+  const baseUrl = new URL(request.url).origin;
+  const identifier = url.pathname.split('/').pop() as string || '';
   const displayType = url.searchParams.get('display') || '';
-
+  
   try {
-    if (!gameName) throw new Error('Invalid game name provided, status code: 400');
+    if (!identifier) throw new Error('Invalid game name provided, status code: 400');
     
     // Check if the game name is a number and fetch based on the app ID
-    if (!isNaN(Number(gameName))) {
-      const appData = await getAppData(Number(gameName));
+    if (!isNaN(Number(identifier))) {
+      const appData = await getAppData(Number(identifier));
       return Response.json({ status: 200, ...appData });
     }
     
     // Fetch matching apps from applist based on the game name and get the full app data based on the app ID. If there are no matching apps in the cache, throw an error.
-    const { matchingApps } = await getAppIDByName(gameName);
+    const { matchingApps } = await getAppIDByName(baseUrl, identifier);
     if (!matchingApps.length) throw new Error('CACHED - No matching app(s) found, status code: 404');
     const appDataPromises = matchingApps.map(async (app) => await getAppData(app.appid));
     const appData = await Promise.all(appDataPromises);
@@ -255,4 +228,3 @@ export async function GET(request: Request) {
     return Response.json({ error: 'STEAM: Internal Server Error' }, { status: 500 });
   }
 }
-

@@ -17,10 +17,7 @@ async function getSGDBImage(name: string): Promise<SDGBCacheEntry> {
   const now = Date.now() / 1000;
   const cachedEntry = sdgbCache[cacheKey];
 
-  if (cachedEntry && cachedEntry.expires > now) {
-    console.log(`SGDB: Returning cached SGDB data for game: ${name}`);
-    return cachedEntry;
-  }
+  if (cachedEntry && cachedEntry.expires > now) return cachedEntry;
 
   try {
     // Fetch SGDB grids for app ID based on name (the results have to have a release date to count as a game);

@@ -6,7 +6,7 @@ export default async function Home() {
   const headersList = await headers();
   const baseUrl = headersList.get('x-base-url') || '';
   
-  const response = await fetch(`${baseUrl}/api/steam`);
+  const response = await fetch(`${baseUrl}/api/steam/charts`);
   const { topReleases, mostPlayed } = await response.json();
   
   const topReleasesData = topReleases[0].appids.slice(0, 10).map(async (appid: number) => {
@@ -21,7 +21,7 @@ export default async function Home() {
   
   const topReleasesDataFinal = topReleasesDataRes.map((game: TopCategories) => ({
     category: 'Top Releases',
-    id: game.id,
+    steamid: game.steamid,
     name: game.name,
     releaseDate: game.releaseDate,
     developer: game.developer,
@@ -29,7 +29,7 @@ export default async function Home() {
   }));
   const mostPlayedDataFinal = mostPlayedDataRes.map((game: TopCategories) => ({
     category: 'Most Played',
-    id: game.id,
+    steamid: game.steamid,
     name: game.name,
     releaseDate: game.releaseDate,
     developer: game.developer,

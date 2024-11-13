@@ -35,7 +35,6 @@ export const getScoreColorClass = (score: number, hoverable = false) => {
 
 /**
  * Gets the color class for a score based on its value for OpenCritic.
- * 
  *
  * @param score - The score value to get the color class for
  * @returns The color tailwind css class for the score className.
@@ -50,7 +49,6 @@ export const getOpenCriticScoreClass = (score: number) => {
 
 /**
  * Gets the color class for a score based on its value for Steam.
- * 
  *
  * @param score - The score value to get the color class for
  * @returns The color tailwind css class for the score className.
@@ -80,7 +78,8 @@ export const normalizeString = (str: string): string => {
 };
 
 /**
- * Normalizes a string by converting it to lowercase, removing special characters, and trimming leading/trailing spaces.
+ * Normalizes a string by converting it to lowercase, removing special characters, replacing spaces with dashes, and trimming leading/trailing spaces.
+ * Mainly used for URL slugs
  *
  * @param str - The string to normalize.
  * @returns The normalized string.
@@ -96,39 +95,48 @@ export const normalizeStringWithDashes = (str: string): string => {
     .trim();  // Remove leading/trailing spaces
 };
 
+
 /**
- * Calculates the normalized Levenshtein distance between two strings using the iterative-with-two-rows method.
+ * Normalizes a string by converting it to lowercase, removing special characters, capitalizing the first letter of each word, and trimming leading/trailing spaces.
+ * Used to make query comparisons closer for OpenCritic for levenshtein distance
+ *
+ * @param str - The string to normalize.
+ * @returns The normalized string.
+ */
+export const ocSearchFix = (str: string): string => {
+  return str
+    .toLowerCase()  // Lowercase for case insensitivity
+    .replace(/[\u00A9\u2122\u00AE\u2013\u2014\u2020\u2021]/g, '')  // Remove ©, ™, ®, and other symbols
+    .replace(/\//g, ' ')  // Normalize forward slashes to spaces
+    .replace(/[^\w\s-]/g, '')  // Remove any non-word characters, except for spaces and hyphens
+    .replace(/[\s\-]+/g, ' ') // Normalize spaces and hyphens to a single space
+    .replace(/\b\w/g, m => m.toUpperCase())  // Capitalize the first letter of each word
+    .replace(/\b(of|the|a|an)\b/gi, m => m.toLowerCase())  // Lowercase articles
+    .replace(/\b(edition|ultimate|definitive|game of the year|enhanced|campaign)\b/gi, '')  // Remove common suffixes
+    .trim();  // Remove leading/trailing spaces
+};
+
+/**
+ * Calculates the Levenshtein distance between two strings.
  *
  * @param a - The first string.
  * @param b - The second string.
- * @returns The normalized Levenshtein distance from 0 (exactly equal) to 1 (completely different).
+ * @returns The Levenshtein distance between the two strings.
  */
-export const levenshteinDistanceNormalized = (a: string, b: string): number => {
-  if (a.length < b.length) {
-    [a, b] = [b, a];
-  }
-
+export const levenshteinDistance = (a: string, b: string): number => {
   const m = a.length;
   const n = b.length;
+  const dp = Array(m + 1).fill(0).map(() => Array(n + 1).fill(0));
 
-  let d0 = Array(n + 1).fill(0);
-  let d1 = Array(n + 1).fill(0);
-
-  for (let j = 0; j <= n; j++) {
-    d0[j] = j;
-  }
-
-  for (let i = 1; i <= m; i++) {
-    const c1 = a[i - 1];
-    d1[0] = i;
-
-    for (let j = 1; j <= n; j++) {
-      const cost = c1 === b[j - 1] ? 0 : 1;
-      d1[j] = Math.min(d1[j - 1] + 1, d0[j] + 1, d0[j - 1] + cost);
+  for (let i = 0; i <= m; i++) {
+    for (let j = 0; j <= n; j++) {
+      if (i === 0) dp[i][j] = j;
+      else if (j === 0) dp[i][j] = i;
+      else if (a[i - 1] === b[j - 1]) dp[i][j] = dp[i - 1][j - 1];
+      else dp[i][j] = 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
     }
-
-    [d0, d1] = [d1, d0];
   }
 
-  return d0[n] / Math.max(m, n);
+  const maxDist = m + n;
+  return dp[m][n] / maxDist;
 };

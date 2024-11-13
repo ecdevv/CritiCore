@@ -49,10 +49,11 @@ const SteamDataCard = ({ pathname, referer, data, name, releaseDate, developer, 
   const score = typeof currentScore === 'number' && currentScore >= 0 ? currentScore : -1;
 
   const linkBtnClass = 'group justify-center items-center max-h-[50px] p-2 bg-[#1E1E1E] shadow-box-card rounded-lg border-[1px] border-zinc-800 hover:scale-110 transition-all duration-100 ease-in-out';
+  const reactIconClass = 'fill-white group-hover:fill-[#2196F3] transition-all duration-100 ease-in-out';
 
   return (
     <div className="relative w-[725px] flex flex-col items-center p-8 gap-5">
-      <BackButton pathname={pathname} referer={referer} className="group absolute top-[-30px] left-1/2 translate-x-[-50%] self-start p-[2px] bg-[#1E1E1E] shadow-box-card rounded-lg border-[1px] border-zinc-800">
+      <BackButton pathname={pathname} referer={referer} className="group absolute top-[-30px] left-1/2 translate-x-[-50%] p-[2px] bg-[#1E1E1E] fill-white shadow-box-card rounded-lg border-[1px] border-zinc-800">
         <TbArrowBackUp size={32} className='group-hover:text-[#2196F3] transition-colors duration-100 ease-in-out'/>
       </BackButton>
       <h1 className="text-4xl font-bold text-white text-center tracking-wide">{name}</h1>
@@ -74,9 +75,9 @@ const SteamDataCard = ({ pathname, referer, data, name, releaseDate, developer, 
           </div>
         </div>
         <div className='flex flex-row justify-center gap-2'>
-          <LinkButton href={devUrl} className={linkBtnClass}><FaHome size={32} className='group-hover:fill-[#2196F3] transition-all duration-100 ease-in-out' /></LinkButton>
-          <LinkButton href={steamUrl} className={linkBtnClass}><FaSteam size={32} className='group-hover:fill-[#2196F3] transition-all duration-100 ease-in-out' /></LinkButton>
-          <LinkButton href={`https://steamdb.info/app/${data.id}/charts/`} className={linkBtnClass}><SiSteamdb size={32} className='group-hover:fill-[#2196F3] transition-all duration-100 ease-in-out' /></LinkButton>
+          <LinkButton href={devUrl} className={linkBtnClass}><FaHome size={32} className={reactIconClass} /></LinkButton>
+          <LinkButton href={steamUrl} className={linkBtnClass}><FaSteam size={32} className={reactIconClass} /></LinkButton>
+          <LinkButton href={`https://steamdb.info/app/${data.id}/charts/`} className={linkBtnClass}><SiSteamdb size={32} className={reactIconClass} /></LinkButton>
         </div>
       </div>
     </div>

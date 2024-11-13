@@ -1,4 +1,3 @@
-
 interface StoreDataCacheEntry {
   topReleases: { month: string; appids: number[] }[] | [];
   mostPlayed: { rank: number; appid: string; lastWeekRank: number; peakInGame: string;}[] | [];
@@ -6,15 +5,13 @@ interface StoreDataCacheEntry {
 }
 
 const storeDataCache: Record<string, StoreDataCacheEntry> = {};
+
 async function getStoreData(): Promise<StoreDataCacheEntry> {
   const cacheKey = `store-data`;
   const now = Date.now() / 1000;
   const cachedEntry = storeDataCache[cacheKey];
 
-  if (cachedEntry && cachedEntry.expires > now) {
-    console.log(`STEAM: Returning cached store data`);
-    return cachedEntry;
-  }
+  if (cachedEntry && cachedEntry.expires > now) return cachedEntry;
 
   try {
     // Fetch game data based on the app ID
@@ -54,12 +51,7 @@ async function getStoreData(): Promise<StoreDataCacheEntry> {
   }
 }
 
-// TODO: Fix isHomepage/url being unused
-export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const isHomepage = url.pathname === '/';
-  console.log(isHomepage);
-  
+export async function GET(_request: Request) {  
   try {
     const { topReleases, mostPlayed } = await getStoreData();
     return Response.json({ status: 200, topReleases, mostPlayed });

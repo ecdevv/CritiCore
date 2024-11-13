@@ -24,23 +24,19 @@ interface AppDataCacheEntry {
   expires: number;
 }
 
-const appCache: Record<string, AppCacheEntry> = {};
+const appIDCache: Record<string, AppCacheEntry> = {};
 const appDataCache: Record<string, AppDataCacheEntry> = {};
 
 async function getAppIDByName(name: string): Promise<AppCacheEntry> {
   const cacheKey = normalizeString(name);
   const now = Date.now() / 1000;
-  const cachedEntry = appCache[cacheKey];
+  const cachedEntry = appIDCache[cacheKey];
 
-  if (cachedEntry && cachedEntry.expires > now) {
-    console.log(`OPENCRITIC: Returning cached app id for game name: ${name}`);
-    return cachedEntry;
-  }
+  if (cachedEntry && cachedEntry.expires > now) return cachedEntry;
 
   try {
     // Fetch search data for app ID based on the game name from params in url
-    const encodedName = encodeURIComponent(name);
-    const url = `${process.env.OPENCRITIC_API_SEARCH}?${new URLSearchParams({ criteria: encodedName })}`;
+    const url = `${process.env.OPENCRITIC_API_SEARCH}?${new URLSearchParams({ criteria: cacheKey })}`;
     const options = {
       method: 'GET',
       headers: {
@@ -49,30 +45,36 @@ async function getAppIDByName(name: string): Promise<AppCacheEntry> {
       }
     };
     const response = await fetch(url, { ...options, cache: 'force-cache' });
-    if (!response.ok) {
-      throw new Error(`Failed to fetch search data, status code: ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`Failed to fetch search data, status code: ${response.status}`);
     const data = await response.json();
     if (!data) throw new Error('Invalid search data, status code: 404');
 
     // Find the app with the shortest distance value that is below 0.03 for the most accurate return
     const apps = data as Array<{ id: number; name: string; dist: number }>;
-    const { id: appid } = apps.reduce(
-      (min, current) => (current.dist < min.dist && current.dist < 0.03 ? current : min),
-      { id: -1, dist: Infinity }
-    );
-    if (appid === -1) throw new Error('Invalid App ID, status code: 404');
+    const appid = apps.find(app => normalizeString(app.name) === cacheKey)?.id || undefined;
+    // const appid = apps.reduce(
+    //   (min, current) => {
+    //     const distance = levenshteinDistance(normalizeString(name), normalizeString(current.name));
+    //     return distance < min.distance && distance < 0.03 ? { ...current, distance } : min;
+    //   },
+    //   { id: -1, distance: Infinity }
+    // ).id;
+    // const { id: appid } = apps.reduce(
+    //   (min, current) => (current.dist < min.dist && current.dist < 0.03 ? current : min),
+    //   { id: -1, dist: Infinity }
+    // );
+    // if (appid === -1) throw new Error('Invalid App ID, status code: 404');
 
     const newEntry = { 
       appid, 
       expires: now + 86400  // Cache for one day
     };
 
-    appCache[cacheKey] = newEntry;
+    appIDCache[cacheKey] = newEntry;
     return newEntry;
   } catch (error) {
     const newEntry = { appid: -1, expires: now + 86400 };
-    appCache[cacheKey] = newEntry;
+    appIDCache[cacheKey] = newEntry;
     console.log(`OPENCRITIC: Error retrieving search data`);
     throw error;
   }
@@ -83,10 +85,7 @@ async function getAppData(appid: number): Promise<AppDataCacheEntry> {
   const now = Date.now() / 1000;
   const cachedEntry = appDataCache[cacheKey];
 
-  if (cachedEntry && cachedEntry.expires > now) {
-    console.log(`OPENCRITIC: Returning cached app data for game id: ${appid}`);
-    return cachedEntry;
-  }
+  if (cachedEntry && cachedEntry.expires > now) return cachedEntry;
 
   try {
     // Fetch game data based on the app ID
@@ -143,6 +142,13 @@ async function getAppData(appid: number): Promise<AppDataCacheEntry> {
       expires: now + 86400 // Cache for one day
     };
 
+    // Cache the appIDCache for the normalized name to skip appIDByName calls since normalized names are === page's game name
+    const normalizedAppName = normalizeString(name || '');
+    if (normalizedAppName) {
+      const newAppIDCacheEntry = { appid, expires: now + 600 };
+      appIDCache[normalizedAppName] = newAppIDCacheEntry;
+    }
+
     appDataCache[cacheKey] = newEntry;
     return newEntry;
   } catch (error) {
@@ -154,11 +160,11 @@ async function getAppData(appid: number): Promise<AppDataCacheEntry> {
 // API Calls are limited to 25 searches per day and 200 requests per day
 export async function GET(request: Request) {
   const { pathname } = new URL(request.url);
-  const gameName = pathname.split('/').pop() as string || '';
+  const identifier = pathname.split('/').pop() as string || '';
 
   try {
-    // Fetch the app ID from the game name and then fetch the app data. If the app ID is invalid and is in the cache, throw an error.
-    const { appid } = (await getAppIDByName(gameName));
+    // If the identifier is a number, skip the search for app ID
+    const appid = isNaN(Number(identifier)) ? (await getAppIDByName(identifier)).appid : Number(identifier);
     if (appid === -1) throw new Error('CACHED - Invalid App ID, status code: 404');
     const data = await getAppData(appid as number);
 

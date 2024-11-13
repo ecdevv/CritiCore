@@ -1,6 +1,6 @@
 export type TopCategories = {
   category: string;
-  id: number;
+  steamid: number;
   name: string;
   releaseDate: string; 
   developer: string;

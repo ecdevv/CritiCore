@@ -15,7 +15,7 @@ const Navbar = () => {
             height={0}
           />
         </Link>
-        <ul className="flex gap-4">
+        <ul className="flex gap-4 text-white">
           <li>
             <Link href="#">News</Link>
           </li>
