@@ -147,4 +147,3 @@ export default async function Game({ params, searchParams }: GameProps) {
     </div>
   );
 }
-

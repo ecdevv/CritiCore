@@ -1,6 +1,7 @@
 import React from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import SearchBar from '../search/SearchBar'
 
 const Navbar = () => {
   return (
@@ -24,9 +25,7 @@ const Navbar = () => {
           </li>
         </ul>
       </div>    
-      <div>
-        <input className="outline-none bg-inherit border-b-2" type="search" placeholder="Search" />
-      </div>
+      <SearchBar />
     </nav>
   )
 }

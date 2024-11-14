@@ -41,13 +41,33 @@ async function getSGDBImage(name: string): Promise<SDGBCacheEntry> {
   }
 }
 
+async function getMultipleSGDBImages(names: string[]) {
+  const images = await Promise.all(names.map(async name => {
+    try {
+      const image = await getSGDBImage(name);
+      return image;
+    } catch {
+      return { capsuleImage: '/' };
+    }
+  }));
+  return images;
+}
+
 export async function GET(request: Request) {
   const { pathname } = new URL(request.url);
-  const gameName = pathname.split('/').pop() as string || '';
-  const name = normalizeString(gameName);
+  const identifier = pathname.split('/').pop() as string || '';
 
   try {
+    const identifiers = identifier.split(',').map(name => normalizeString(name.trim()));
+    if (!identifiers.length) throw new Error('Invalid game name(s) provided, status code: 400');
+
+    if (identifiers.length > 1) {
+      const images = await getMultipleSGDBImages(identifiers);
+      return Response.json({ status: 200, images });
+    }
+
     // Fetch the image from SGDB
+    const name = normalizeString(identifier);
     const { capsuleImage } = await getSGDBImage(name);
     if (!capsuleImage) throw new Error('CACHED - No image returned from SGDB');
 

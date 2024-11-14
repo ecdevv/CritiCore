@@ -52,6 +52,7 @@ async function getAppIDByName(name: string): Promise<AppCacheEntry> {
     // Find the app with the shortest distance value that is below 0.03 for the most accurate return
     const apps = data as Array<{ id: number; name: string; dist: number }>;
     const appid = apps.find(app => normalizeString(app.name) === cacheKey)?.id || undefined;
+    if (!appid) throw new Error('Invalid App ID, status code: 404');
     // const appid = apps.reduce(
     //   (min, current) => {
     //     const distance = levenshteinDistance(normalizeString(name), normalizeString(current.name));
@@ -75,7 +76,7 @@ async function getAppIDByName(name: string): Promise<AppCacheEntry> {
   } catch (error) {
     const newEntry = { appid: -1, expires: now + 86400 };
     appIDCache[cacheKey] = newEntry;
-    console.log(`OPENCRITIC: Error retrieving search data`);
+    console.log(`OPENCRITIC: Error retrieving app id for game name: ${cacheKey}`);
     throw error;
   }
 }
@@ -103,6 +104,7 @@ async function getAppData(appid: number): Promise<AppDataCacheEntry> {
     if (!data) throw new Error('Invalid game data, status code: 404');
 
     // Extract data from the response
+    const id = data.id;
     const name = data.name;
     const date = new Date(data.firstReleaseDate);
     const releaseDate = `${date.toLocaleString('default', { month: 'long' })} ${date.getDate()}, ${date.getFullYear()}`;
@@ -124,7 +126,7 @@ async function getAppData(appid: number): Promise<AppDataCacheEntry> {
     const capsuleImage = capsuleImageResponse.ok ? capsuleImageUrl : undefined;
     
     const newEntry = {
-      id: appid,
+      id,
       name,
       releaseDate,
       developer,

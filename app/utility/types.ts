@@ -1,9 +1,19 @@
-export type TopCategories = {
+export type CardCategories = {
   category: string;
   steamid: number;
   name: string;
   releaseDate: string; 
   developer: string;
+  capsuleImage: string;
+}
+
+export type SteamCategories = {
+  category: string;
+  id: number;
+  name: string;
+  releaseDate: string;
+  developer: string;
+  ageRating: number;
   capsuleImage: string;
 }
 
