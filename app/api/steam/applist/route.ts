@@ -15,7 +15,8 @@ async function getAppList(): Promise<SteamAppList> {
   if (cachedEntry && cachedEntry.expires > now) return cachedEntry.applist;
 
   try {
-    // Fetch applist data
+    // Cache empty entry for 1 hour first before fetching applist data and cache empty entry for 1 hour
+    appListCache[cacheKey] = { applist: [], expires: now + 300 };
     const response = await fetch(`${process.env.STEAM_API_APPLIST}`);
     if (!response.ok) throw new Error(`Failed to fetch applist data, status code: ${response.status}`);
     const data = await response.json();
@@ -24,10 +25,10 @@ async function getAppList(): Promise<SteamAppList> {
     // Extract data from the response
     const applist = data.applist.apps;
 
+    // Update cache entry and return this entry
     appListCache[cacheKey] = { applist, expires: now + 3600 };
     return applist;
   } catch (error) {
-    appListCache[cacheKey] = { applist: [], expires: 0 };
     console.log('STEAM: Error retrieving applist');
     throw error;
   }

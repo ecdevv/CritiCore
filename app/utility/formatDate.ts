@@ -31,7 +31,7 @@ const formats = [
   'MMM yyyy',         // e.g., "Feb 2022"
 ];
 
-export function formatDate(dateStr: string): string {
+export default function formatDate(dateStr: string): string {
   let parsedDate: Date | null = null;
 
   for (const fmt of formats) {

@@ -1,10 +1,10 @@
-import React from "react";
+import { headers } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
-import { headers } from "next/headers";
 import ScoreBox from "@/app/components/score/ScoreBox";
 import OCDataCard from "./OCDataCard";
 import SteamDataCard from "./SteamDataCard";
+import { PLACEHOLDER_450X675 } from "@/app/utility/constants";
 
 type ReviewType = "all" | "critic" | "user" ;
 type DisplayType = "none" | "opencritic" | "steam";
@@ -28,23 +28,20 @@ export default async function Game({ params, searchParams }: GameProps) {
   const name = (await params).name || '';
 
   // Fetching API data from Metacritic, OpenCritic, and Steam. OpenCritic API is limited to 25 searches per day and 200 requests per day, so usually using dummy data
-  // const ocResponse = await fetch(`${baseUrl}/api/opencritic/${name}`);
-  // const ocData = await ocResponse.json();
-  const ocData = {status: 200, id: undefined, name: undefined, releaseDate: undefined, developer: undefined, publisher: undefined, capsuleImage: undefined, 
-    hasLootBoxes: true, percentRec: 74, criticScore: 81, userScore: -1, reviewDesc: 'N/A', totalCriticReviews: 84, totalUserReviews: -1, totalTopCriticReviews: -1,
-    tier: { name: 'Strong', url: 'https://' + process.env.OPENCRITIC_IMG_HOST + '/mighty-man/' + 'strong' + '-man.png'}, url: 'https://opencritic.com/'
+  // const ocData = await fetch(`${baseUrl}/api/opencritic/${name}`).then(res => res.json());
+  const ocData = { status: 200, id: undefined, name: undefined, releaseDate: undefined, developer: undefined, publisher: undefined,
+    hasLootBoxes: true, percentRec: 91, criticScore: 88, userScore: -1, totalCriticReviews: 84, totalUserReviews: -1, totalTopCriticReviews: -1,
+    tier: { name: 'Mighty', url: 'https://' + process.env.OPENCRITIC_IMG_HOST + '/mighty-man/' + 'mighty' + '-man.png'}, url: 'https://opencritic.com/', capsuleImage: undefined
   };
-  const steamResponse = await fetch(`${baseUrl}/api/steam/${name}?${new URLSearchParams({ display: displayType })}`);
-  const steamData = await steamResponse.json();
-  const sgdbResponse = await fetch(`${baseUrl}/api/sgdb/${name}`);
-  const sgdbData = await sgdbResponse.json();
+  const steamData = await fetch(`${baseUrl}/api/steam/${name}`).then(res => res.json());
+  const sgdbData = await fetch(`${baseUrl}/api/sgdb/${name}`).then(res => res.json());;
   const responseStatus = ocData.status === 200 || steamData.status === 200 ? 200 : 404;
   const displayName = ocData.name || steamData.name || 'N/A';
   const releaseDate = ocData.releaseDate || steamData.releaseDate || 'N/A';
   const developer = ocData.developer || steamData.developer || 'N/A';
-  const capsuleImage = steamData.capsuleImage || ocData.capsuleImage || sgdbData.capsuleImage || '/';
+  const capsuleImage = steamData.capsuleImage || ocData.capsuleImage || sgdbData.capsuleImage || { og: PLACEHOLDER_450X675 };
   const validScores = ocData.criticScore >= 0 || ocData.userScore >= 0 || steamData.criticScore >= 0 || steamData.userScore >= 0;
-  
+
   const scores = {
     opencritic: { critic: ocData.criticScore, user: ocData.userScore },
     steam: { critic: steamData.criticScore, user: steamData.userScore },
@@ -93,15 +90,16 @@ export default async function Game({ params, searchParams }: GameProps) {
       {(responseStatus === 200 && validScores) ? (
         <>
           <section className="flex justify-center items-center p-8 gap-12">
-            <Link href={capsuleImage} target="_blank" rel="noopener noreferrer" >
+            <Link href={capsuleImage.og} target="_blank" rel="noopener noreferrer" >
               <Image 
-                src={capsuleImage}
+                src={capsuleImage.og}
                 alt={displayName} 
                 width={450}
                 height={675}
-                className={`border-[1px] border-zinc-900 shadow-vertical-card rounded-xl transition-all duration-200 ease-in-out hover:cursor-pointer hover:opacity-50`}
                 priority
-                loading="eager"
+                placeholder={capsuleImage.blur ? 'blur' : 'empty'}
+                blurDataURL={capsuleImage.blur ? capsuleImage.blur : undefined}    
+                className={`border-[1px] border-zinc-900 shadow-vertical-card rounded-xl transition-all duration-200 ease-in-out hover:cursor-pointer hover:opacity-50`}
               />
             </Link>
             {(displayType === 'none') && (

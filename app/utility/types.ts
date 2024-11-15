@@ -4,7 +4,7 @@ export type CardCategories = {
   name: string;
   releaseDate: string; 
   developer: string;
-  capsuleImage: string;
+  capsuleImage: { og: string; blur: string }
 }
 
 export type SteamCategories = {
@@ -14,7 +14,7 @@ export type SteamCategories = {
   releaseDate: string;
   developer: string;
   ageRating: number;
-  capsuleImage: string;
+  capsuleImage: { og: string; blur: string }
 }
 
 export type OCData = {
@@ -28,13 +28,12 @@ export type OCData = {
   percentRec: number | 'N/A' | undefined;
   criticScore: number | 'N/A' | undefined;
   userScore: number | 'N/A' | undefined;
-  reviewDesc: string | undefined;
   totalCriticReviews: number | 'N/A' | undefined;
   totalUserReviews: number | 'N/A' | undefined;
   totalTopCriticReviews: number | 'N/A' | undefined;
   tier: { name: string | undefined; url: string | undefined };
-  capsuleImage: string | undefined;
   url: string | undefined;
+  capsuleImage: { og: string | undefined; blur: string | undefined } | undefined;
 }
 
 export type SteamData = {
@@ -47,13 +46,13 @@ export type SteamData = {
   ageRating: number | undefined;
   criticScore: number | 'N/A' | undefined;
   userScore: number | 'N/A' | undefined;
-  reviewDesc: string | undefined;
   totalPositive: number | 'N/A' | undefined;
   totalNegative: number | 'N/A' | undefined;
   totalReviews: number | 'N/A' | undefined;
-  currentPlayers?: number | undefined;
-  headerImage: string | undefined;
-  capsuleImage: string | undefined;
+  reviewDesc: string | undefined;
   url: string | undefined;
   devUrl: string | undefined;
+  headerImage: { og: string | undefined; blur: string | undefined } | undefined;
+  capsuleImage: { og: string | undefined; blur: string | undefined } | undefined;
+  currentPlayers?: number | undefined;
 }

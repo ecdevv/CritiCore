@@ -1,7 +1,8 @@
 import { headers } from "next/headers";
-import CardGrid from "@/app/components/card/CardGrid";
+import CardGrid from "@/app/components/grid/CardGrid";
 import { CardCategories, SteamCategories } from "@/app/utility/types";
 import { normalizeString } from "@/app/utility/helper";
+import { PLACEHOLDER_200X300 } from "@/app/utility/constants";
 
 interface SearchProps {
   params: Promise<{ query: string }>;
@@ -41,7 +42,7 @@ export default async function SearchPage({ params }: SearchProps) {
             name: game.name,
             releaseDate: game.releaseDate,
             developer: game.developer,
-            capsuleImage: game.capsuleImage || sgdbData.images[index].capsuleImage || '/',
+            capsuleImage: game.capsuleImage || sgdbData.images[index].capsuleImage || { og: PLACEHOLDER_200X300 },
           }))
           .reverse();
       }

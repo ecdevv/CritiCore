@@ -1,4 +1,5 @@
 import { normalizeString } from '@/app/utility/helper';
+import generateBlurDataURL from '@/app/utility/generateBlurDataURL';
 
 interface AppCacheEntry {
   appid: number | undefined;
@@ -19,13 +20,19 @@ interface AppDataCacheEntry {
   totalUserReviews: number | undefined;
   totalTopCriticReviews: number | undefined;
   tier: { name: string | undefined; url: string | undefined } | undefined;
-  capsuleImage: string | undefined;
   url: string | undefined;
+  capsuleImage: { og: string | undefined; blur: string | undefined } | undefined;
   expires: number;
 }
 
 const appIDCache: Record<string, AppCacheEntry> = {};
 const appDataCache: Record<string, AppDataCacheEntry> = {};
+
+const emptyDataCacheEntry: AppDataCacheEntry = {
+  id: undefined, name: undefined, releaseDate: undefined, developer: undefined, publisher: undefined, hasLootBoxes: undefined,
+  percentRec: undefined, criticScore: undefined, userScore: undefined, totalCriticReviews: undefined, totalUserReviews: undefined,
+  totalTopCriticReviews: undefined, tier: undefined, url: undefined, capsuleImage: undefined, expires: 0
+}
 
 async function getAppIDByName(name: string): Promise<AppCacheEntry> {
   const cacheKey = normalizeString(name);
@@ -35,7 +42,8 @@ async function getAppIDByName(name: string): Promise<AppCacheEntry> {
   if (cachedEntry && cachedEntry.expires > now) return cachedEntry;
 
   try {
-    // Fetch search data for app ID based on the game name from params in url
+    // Cache empty entry for 24 hours before fetching search data for app ID based on the game name from params in url
+    appIDCache[cacheKey] = { appid: undefined, expires: now + 86400 };
     const url = `${process.env.OPENCRITIC_API_SEARCH}?${new URLSearchParams({ criteria: cacheKey })}`;
     const options = {
       method: 'GET',
@@ -66,6 +74,7 @@ async function getAppIDByName(name: string): Promise<AppCacheEntry> {
     // );
     // if (appid === -1) throw new Error('Invalid App ID, status code: 404');
 
+    // Update cache entry and return this entry
     const newEntry = { 
       appid, 
       expires: now + 86400  // Cache for one day
@@ -74,8 +83,6 @@ async function getAppIDByName(name: string): Promise<AppCacheEntry> {
     appIDCache[cacheKey] = newEntry;
     return newEntry;
   } catch (error) {
-    const newEntry = { appid: -1, expires: now + 86400 };
-    appIDCache[cacheKey] = newEntry;
     console.log(`OPENCRITIC: Error retrieving app id for game name: ${cacheKey}`);
     throw error;
   }
@@ -90,6 +97,7 @@ async function getAppData(appid: number): Promise<AppDataCacheEntry> {
 
   try {
     // Fetch game data based on the app ID
+    appDataCache[cacheKey] = { ...emptyDataCacheEntry, expires: now + 86400 };
     const url = `${process.env.OPENCRITIC_API_GAME}/${appid}`;
     const options = {
       method: 'GET',
@@ -121,10 +129,15 @@ async function getAppData(appid: number): Promise<AppDataCacheEntry> {
     const ocUrl = data.url;
 
     // Fetch capsule image to ensure it exists, otherwise return undefined capsuleImage
-    const capsuleImageUrl = 'https://' + process.env.OPENCRITIC_IMG_HOST + '/' + data.images.box.og; // Box image
-    const capsuleImageResponse = await fetch(capsuleImageUrl, { method: 'HEAD' });
-    const capsuleImage = capsuleImageResponse.ok ? capsuleImageUrl : undefined;
+    const boxImageExists = !!data.images?.box?.og;
+    const capsuleImgTestUrl = boxImageExists ? 'https://' + process.env.OPENCRITIC_IMG_HOST + '/' + data.images.box.og : undefined; // Box image
+    const capsuleImgResponse = capsuleImgTestUrl ? await fetch(capsuleImgTestUrl) : undefined;
+    const capsuleImgBuffer = capsuleImgResponse?.ok ? await capsuleImgResponse.arrayBuffer() : undefined;
+    const capsuleImgBlur = capsuleImgBuffer ? await generateBlurDataURL(capsuleImgBuffer) : undefined;
+    const capsuleImgUrl = capsuleImgResponse?.ok ? capsuleImgTestUrl : undefined;
+    const capsuleImage = capsuleImgUrl ? { og: capsuleImgUrl, blur: capsuleImgBlur } : undefined;
     
+    // Update cache entry and return this entry
     const newEntry = {
       id,
       name,
@@ -139,16 +152,15 @@ async function getAppData(appid: number): Promise<AppDataCacheEntry> {
       totalUserReviews,
       totalTopCriticReviews,
       tier,
-      capsuleImage,
       url: ocUrl,
+      capsuleImage,
       expires: now + 86400 // Cache for one day
     };
 
     // Cache the appIDCache for the normalized name to skip appIDByName calls since normalized names are === page's game name
-    const normalizedAppName = normalizeString(name || '');
+    const normalizedAppName = normalizeString(name);
     if (normalizedAppName) {
-      const newAppIDCacheEntry = { appid, expires: now + 600 };
-      appIDCache[normalizedAppName] = newAppIDCacheEntry;
+      appIDCache[normalizedAppName] = { appid: id, expires: now + 86400 };
     }
 
     appDataCache[cacheKey] = newEntry;
