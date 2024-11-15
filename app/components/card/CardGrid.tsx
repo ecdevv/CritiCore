@@ -1,4 +1,3 @@
-import React from 'react';
 import Card from './Card';
 import { CardCategories } from '@/app/utility/types';
 

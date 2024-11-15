@@ -1,6 +1,5 @@
-import React from 'react'
-import Link from 'next/link'
 import Image from 'next/image' 
+import Link from 'next/link'
 import { normalizeString } from '@/app/utility/helper'
 
 const Card = ({ name, imgUrl }: { name: string; imgUrl: string; }) => {
@@ -9,8 +8,8 @@ const Card = ({ name, imgUrl }: { name: string; imgUrl: string; }) => {
       <Image
         src={imgUrl}
         alt={name || 'Placeholder'}
-        width={300}
-        height={600}
+        width={200}
+        height={300}
         className='w-[200px] h-[300px] border-[1px] border-zinc-900 shadow-vertical-card rounded-xl transition-all duration-200 ease-in-out'
       />
     </Link>

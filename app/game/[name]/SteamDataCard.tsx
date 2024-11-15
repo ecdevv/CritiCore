@@ -1,4 +1,3 @@
-import React from 'react'
 import Link from 'next/link'
 import { FaSteam, FaHome } from 'react-icons/fa'
 import { SiSteamdb } from 'react-icons/si'

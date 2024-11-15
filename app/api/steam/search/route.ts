@@ -1,20 +1,35 @@
 import { normalizeString, damerauLevenshteinDistance, filterString } from "@/app/utility/helper";
 
-async function getSearchResults(baseUrl: string, searchQuery: string) {
+interface SearchResultsCacheEntry {
+  searchResults: { appid: number; name: string; distance: number }[];
+  expires: number;
+}
+
+const searchResultsCache: Record<string, SearchResultsCacheEntry> = {};
+
+async function getSearchResults(baseUrl: string, searchQuery: string): Promise<SearchResultsCacheEntry> {
+  const now = Date.now() / 1000;
+  const cacheKey = normalizeString(searchQuery);
+  const cachedEntry = searchResultsCache[cacheKey];
+
+  if (cachedEntry && cachedEntry.expires > now) return cachedEntry;
+
+  // Cache empty entry for 5 minutes fetch the app list
+  searchResultsCache[cacheKey] = { searchResults: [], expires: now + 300 };
   const appListResponse = await fetch(`${baseUrl}/api/steam/applist`);
   if (!appListResponse.ok) throw new Error(`Failed to fetch app list data, status code: ${appListResponse.status}`);
   const appListData = await appListResponse.json();
   const appList = appListData.applist;
 
-  // Filter the app list based on the search query
-  const normalizeQuery = normalizeString(searchQuery);
-  const searchResults = appList.filter((app: { name: string }) => normalizeString(app.name).includes(normalizeQuery));
+  // Basic filtering of the search results based on the query
+  const normalizedQuery = normalizeString(searchQuery);
+  const searchResults = appList.filter((app: { name: string }) => normalizeString(app.name).includes(normalizedQuery));
 
   // Sort and filter the search results based on damerau-levenshtein distance
   let searchResultsFiltered = searchResults
     .map((app: { appid: number; name: string }) => ({
       ...app,
-      distance: damerauLevenshteinDistance(normalizeQuery, normalizeString(app.name)),
+      distance: damerauLevenshteinDistance(normalizedQuery, normalizeString(app.name)),
     }))
     .filter((app: { distance: number }) => app.distance <= 0.6)
     .sort((a: { distance: number }, b: { distance: number }) => a.distance - b.distance);
@@ -33,8 +48,11 @@ async function getSearchResults(baseUrl: string, searchQuery: string) {
     }
   });
   searchResultsFiltered = Array.from(uniqueApps.values());
-  
-  return searchResultsFiltered;
+
+  // Update cache entry and return this entry
+  const newEntry = { searchResults: searchResultsFiltered, expires: now + 600 };
+  searchResultsCache[cacheKey] = newEntry;
+  return newEntry;
 }
 
 export async function GET(request: Request) {
@@ -44,7 +62,7 @@ export async function GET(request: Request) {
   const searchQuery = searchParams.get('q') || '';
 
   try {
-    const searchResults = await getSearchResults(baseUrl, searchQuery);
+    const { searchResults } = await getSearchResults(baseUrl, searchQuery);
     return Response.json({ status: 200, searchResults });
   } catch (error) {
     console.error('STEAM:', error);

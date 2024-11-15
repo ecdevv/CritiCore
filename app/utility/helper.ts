@@ -33,11 +33,12 @@ export const normalizeString = (str: string, dashForSpace = false, search = fals
     .replace(/[\u00A9\u2122\u00AE\u2013\u2014\u2020\u2021]/g, '')  // Remove , , , and other symbols
     .replace(/\//g, ' ')  // Normalize forward slashes to spaces
     .replace(/[^\w\s-]/g, '')  // Remove any non-word characters, except for spaces and hyphens
-    .replace(/[\s\-]+/g, dashForSpace ? '-' : ' ') // Normalize spaces and hyphens to a single space or hyphen
     .replace(search ? '' : /\b(ultimate|definitive|enhanced|complete|goty|game of the year|limited|deluxe|collector\'s)\s+edition(?:\s+upgrade)?\b/gi, '')  // Remove phrases like "the ultimate edition" only if not search
     .replace(search ? '' : /\b(gold|vault|free|standard|anniversary)\s+edition(?:\s+upgrade)?\b/gi, '')  // Remove phrases like "the gold edition" only if not search
     .replace(search ? '' : /\b(pc|windows|mac|linux)\s+edition(?:\s+upgrade)?\b/gi, '')  // Remove phrases like "the pc edition" only if not search
     .replace(search ? '' : /\b(campaign|game of the year|goty)\b/gi, '')  // Remove other common suffixes only if not search
+    .replace(/[\s\-]+/g, dashForSpace ? '-' : ' ') // Normalize spaces and hyphens to a single space or hyphen
+    .replace(/(^-+|-+$)/g, '') // Remove leading/trailing -
     .trim();  // Remove leading/trailing spaces
 };
 

@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import CardGrid from "./components/card/CardGrid";
 import { CardCategories, SteamCategories } from "@/app/utility/types";
 import { normalizeString } from "@/app/utility/helper";
+import { PLACEHOLDER_200X300 } from "./utility/constants";
 
 export default async function Home() {
   const headersList = await headers();
@@ -37,7 +38,7 @@ export default async function Home() {
       name: game.name,
       releaseDate: game.releaseDate,
       developer: game.developer,
-      capsuleImage: game.capsuleImage || sgdbTopData.images[topReleasesData.indexOf(game)]?.capsuleImage || '/',
+      capsuleImage: game.capsuleImage || sgdbTopData.images[topReleasesData.indexOf(game)]?.capsuleImage || PLACEHOLDER_200X300,
     }));
     const mostPlayedDataFinal: CardCategories[] = mostPlayedData.map((game: SteamCategories) => ({
       category: 'Most Played',
@@ -45,7 +46,7 @@ export default async function Home() {
       name: game.name,
       releaseDate: game.releaseDate,
       developer: game.developer,
-      capsuleImage: game.capsuleImage || sgdbMostData.images[mostPlayedData.indexOf(game)]?.capsuleImage || '/',
+      capsuleImage: game.capsuleImage || sgdbMostData.images[mostPlayedData.indexOf(game)]?.capsuleImage || PLACEHOLDER_200X300,
     }));
 
 

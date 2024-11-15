@@ -6,7 +6,7 @@ interface ExtendedSGDBGame extends SGDBGame {
 }
 
 interface SDGBCacheEntry {
-  capsuleImage: string;
+  capsuleImage: string | undefined;
   expires: number;
 }
 
@@ -20,8 +20,9 @@ async function getSGDBImage(name: string): Promise<SDGBCacheEntry> {
   if (cachedEntry && cachedEntry.expires > now) return cachedEntry;
 
   try {
-    // Fetch SGDB grids for app ID based on name (the results have to have a release date to count as a game);
+    // Cache empty entry for 10 minutes before fetch SGDB grids for app ID based on name (the results have to have a release date to count as a game);
     // Find the first (best) static grid/capsule image
+    sdgbCache[cacheKey] = { capsuleImage: undefined, expires: now + 300 };
     const client = new SGDB(`${process.env.SGDB_API_KEY}`);
     const searchData = await client.searchGame(name) as ExtendedSGDBGame[];
     const appid = searchData.find((data) => data.release_date !== undefined)?.id as number;
@@ -30,18 +31,18 @@ async function getSGDBImage(name: string): Promise<SDGBCacheEntry> {
     if(!grids[0]) throw new Error('No grids returned for appid');
     const capsuleImage = grids[0].url.toString();
 
+    // Update cache entry and return this entry
     const newEntry = { capsuleImage, expires: now + 600 };
     sdgbCache[cacheKey] = newEntry;
     return newEntry;
   } catch (error) {
-    const newEntry = { capsuleImage: '', expires: now + 600 };
-    sdgbCache[cacheKey] = newEntry;
     console.log(`SGDB: Error retrieving SGDB grids data for app: ${name}`);
     throw error;
   }
 }
 
 async function getMultipleSGDBImages(names: string[]) {
+  // Fetch the images from SGDB, if not found, return a default path
   const images = await Promise.all(names.map(async name => {
     try {
       const image = await getSGDBImage(name);

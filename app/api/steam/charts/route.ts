@@ -14,7 +14,8 @@ async function getStoreData(): Promise<StoreDataCacheEntry> {
   if (cachedEntry && cachedEntry.expires > now) return cachedEntry;
 
   try {
-    // Fetch game data based on the app ID
+    // Cache empty entry for 10 minutes before fetching game data based on the app ID
+    storeDataCache[cacheKey] = { topReleases: [], mostPlayed: [], expires: now + 300 };
     const allResponses = await Promise.all([
       fetch(`${process.env.STEAM_API_TOP_RELEASES}`),
       fetch(`${process.env.STEAM_API_MOST_PLAYED}`),
@@ -34,9 +35,9 @@ async function getStoreData(): Promise<StoreDataCacheEntry> {
       month: page.name,
       appids: page.item_ids.map(item => item.appid),
     }));
-
     const mostPlayed: { rank: number; appid: string; lastWeekRank: number; peakInGame: string;}[] = mostPlayedData.response.ranks;
 
+    // Update cache entry and return this entry
     const newEntry = {
       topReleases,
       mostPlayed,

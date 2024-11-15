@@ -1,6 +1,5 @@
-import React from 'react'
-import Link from 'next/link'
 import Image from 'next/image'
+import Link from 'next/link'
 import { TbArrowBackUp } from 'react-icons/tb'
 import BackButton from '@/app/components/common/BackButton'
 import ScoreBox from '@/app/components/score/ScoreBox'
