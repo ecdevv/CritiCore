@@ -1,33 +1,27 @@
 import SGDB, { SGDBGame } from "steamgriddb";
-import { normalizeString } from "@/app/utility/helper";
-import generateBlurDataURL from "@/app/utility/generateBlurDataURL";
+import { getCacheSize } from "@/app/utility/data";
+import { normalizeString } from "@/app/utility/strings";
 
 interface ExtendedSGDBGame extends SGDBGame {
   release_date: string;
 }
 
-interface SGDBCacheEntry {
-  capsuleImage: { og: string | undefined; blur: string | undefined } | undefined;
-  expires: number;
-}
+const MAX_CACHE_SIZE = 25 * 1024 * 1024;      // 25MB
+const REVALIDATION_TIME = 1 * 5 * 60 * 1000;  // Cache for 5 minutes
+const cache = new Map();
 
-const MAX_SGDB_CACHE_SIZE = 1000;
-const sgdbCache = new Map<string, SGDBCacheEntry>();
-
-async function getSGDBImage(name: string): Promise<SGDBCacheEntry> {
+async function getSGDBImage(name: string) {
   const cacheKey = `sgdb-${name}`;
-  const now = Date.now() / 1000;
-  const cachedEntry = sgdbCache.get(cacheKey);
-
-  if (cachedEntry && cachedEntry.expires > now) return cachedEntry;
+  if (cache.has(cacheKey)) return cache.get(cacheKey);
 
   try {
     // Cache empty entry for 5 minutes before fetching SGDB grids
-    if (sgdbCache.size >= MAX_SGDB_CACHE_SIZE) {
-      const oldestEntry = Array.from(sgdbCache).sort((a, b) => a[1].expires - b[1].expires)[0];
-      sgdbCache.delete(oldestEntry[0]);
+    if (getCacheSize(cache) >= MAX_CACHE_SIZE) {
+      const firstKey = cache.keys().next().value;
+      cache.delete(firstKey);
     }
-    sgdbCache.set(cacheKey, { capsuleImage: undefined, expires: now + 300 });
+    cache.set(cacheKey, undefined);
+    setTimeout(() => cache.delete(cacheKey), REVALIDATION_TIME);
 
     // Fetching SGDB grids for app ID based on name (the results have to have a release date to count as a game);
     // Find the first (best) static grid/capsule image
@@ -37,19 +31,12 @@ async function getSGDBImage(name: string): Promise<SGDBCacheEntry> {
     if(!appid) throw new Error('No appid found for game');
     const grids = await client.getGrids({ type: 'game', id: appid, types: ['static'], styles: ['alternate'], dimensions: ['600x900'], nsfw: 'false' });
     if(!grids[0]) throw new Error('No grids returned for appid');
+    const capsuleImage = grids[0].url.toString();
 
-    // Fetch to test if the image is available and if so, generate a blur data url
-    const capsuleImgTestUrl = grids[0].url.toString();
-    const capsuleImgResponse = await fetch(capsuleImgTestUrl);
-    const capsuleImgBuffer = capsuleImgResponse.ok ? await capsuleImgResponse.arrayBuffer() : undefined;
-    const capsuleImgBlur = capsuleImgBuffer ? await generateBlurDataURL(capsuleImgBuffer) : undefined;
-    const capsuleImgUrl = capsuleImgResponse.ok ? capsuleImgTestUrl : undefined;
-    const capsuleImage = capsuleImgUrl ? { og: capsuleImgUrl, blur: capsuleImgBlur } : undefined;
-
-    // Update cache entry and return this entry
-    const newEntry = { capsuleImage, expires: now + 600 };
-    sgdbCache.set(cacheKey, newEntry);
-    return newEntry;
+    // Update cache entry and return this entry;
+    cache.set(cacheKey, capsuleImage);
+    setTimeout(() => cache.delete(cacheKey), REVALIDATION_TIME);
+    return capsuleImage;
   } catch (error) {
     console.log(`SGDB: Error retrieving SGDB grids data for app: ${name}`);
     throw error;
@@ -84,7 +71,7 @@ export async function GET(request: Request) {
 
     // Fetch the image from SGDB
     const name = normalizeString(identifier);
-    const { capsuleImage } = await getSGDBImage(name);
+    const capsuleImage = await getSGDBImage(name);
     if (!capsuleImage) throw new Error('CACHED - No image returned from SGDB');
 
     return Response.json({ status: 200, capsuleImage });

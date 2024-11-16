@@ -4,6 +4,7 @@ import Link from "next/link";
 import ScoreBox from "@/app/components/score/ScoreBox";
 import OCDataCard from "./OCDataCard";
 import SteamDataCard from "./SteamDataCard";
+import { getBlurDataURL } from "@/app/utility/data";
 import { PLACEHOLDER_450X675 } from "@/app/utility/constants";
 
 type ReviewType = "all" | "critic" | "user" ;
@@ -34,12 +35,13 @@ export default async function Game({ params, searchParams }: GameProps) {
     tier: { name: 'Mighty', url: 'https://' + process.env.OPENCRITIC_IMG_HOST + '/mighty-man/' + 'mighty' + '-man.png'}, url: 'https://opencritic.com/', capsuleImage: undefined
   };
   const steamData = await fetch(`${baseUrl}/api/steam/${name}`).then(res => res.json());
-  const sgdbData = fetch(`${baseUrl}/api/sgdb/${name}`).then(res => res.json());
   const responseStatus = ocData.status === 200 || steamData.status === 200 ? 200 : 404;
   const displayName = ocData.name || steamData.name || 'N/A';
   const releaseDate = ocData.releaseDate || steamData.releaseDate || 'N/A';
   const developer = ocData.developer || steamData.developer || 'N/A';
-  const capsuleImage = steamData.capsuleImage || ocData.capsuleImage || (await sgdbData).capsuleImage || { og: PLACEHOLDER_450X675 };
+  const capsuleImage = steamData.capsuleImage || ocData.capsuleImage || (await fetch(`${baseUrl}/api/sgdb/${name}`).then(res => res.json())).capsuleImage;
+  const capsuleImageBlur = capsuleImage ? await getBlurDataURL(capsuleImage) : undefined;
+  const image = capsuleImage ? { og: capsuleImage, blur: capsuleImageBlur } : { og: PLACEHOLDER_450X675, blur: undefined };
   const validScores = ocData.criticScore >= 0 || ocData.userScore >= 0 || steamData.criticScore >= 0 || steamData.userScore >= 0;
 
   const scores = {
@@ -90,15 +92,15 @@ export default async function Game({ params, searchParams }: GameProps) {
       {(responseStatus === 200 && validScores) ? (
         <>
           <section className="flex justify-center items-center p-8 gap-12">
-            <Link href={capsuleImage.og} target="_blank" rel="noopener noreferrer" >
+            <Link href={image.og || ''} target="_blank" rel="noopener noreferrer" >
               <Image 
-                src={capsuleImage.og}
+                src={image.og}
                 alt={displayName} 
                 width={450}
                 height={675}
                 priority
-                placeholder={capsuleImage.blur ? 'blur' : 'empty'}
-                blurDataURL={capsuleImage.blur ? capsuleImage.blur : undefined}    
+                placeholder={image.blur ? 'blur' : 'empty'}
+                blurDataURL={image.blur ? image.blur : undefined}    
                 className={`border-[1px] border-zinc-900 shadow-vertical-card rounded-xl transition-all duration-200 ease-in-out hover:cursor-pointer hover:opacity-50`}
               />
             </Link>

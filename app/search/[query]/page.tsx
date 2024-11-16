@@ -1,8 +1,10 @@
 import { headers } from "next/headers";
 import CardGrid from "@/app/components/grid/CardGrid";
+import { getBlurDataURL }from "@/app/utility/data";
+import { normalizeString } from "@/app/utility/strings";
 import { CardCategories, SteamCategories } from "@/app/utility/types";
-import { normalizeString } from "@/app/utility/helper";
 import { PLACEHOLDER_200X300 } from "@/app/utility/constants";
+
 
 interface SearchProps {
   params: Promise<{ query: string }>;
@@ -35,20 +37,21 @@ export default async function SearchPage({ params }: SearchProps) {
           resultsData
             .filter((game: SteamCategories) => game.id)
             .map(async (game: SteamCategories) => {
-              const image = game.capsuleImage 
-                ? game.capsuleImage 
-                : (await fetch(`${baseUrl}/api/sgdb/${normalizeString(game.name, true)}`).then(res => res.json())).capsuleImage;
+              const cachedData = game.capsuleImage || (await fetch(`${baseUrl}/api/sgdb/${normalizeString(game.name, true)}`).then(res => res.json())).capsuleImage;
+              const og = cachedData || undefined;
+              const blur = og ? await getBlurDataURL(og) : undefined;
+              const image = og ? { og, blur } : { og: PLACEHOLDER_200X300, blur: undefined };
               return {
                 category: 'Search Results',
                 steamid: game.id,
                 name: game.name,
                 releaseDate: game.releaseDate,
                 developer: game.developer,
-                capsuleImage: image || { og: PLACEHOLDER_200X300 },
+                capsuleImage: image,
               };
             })
         );
-        categoryData.reverse();
+        categoryData.sort((a, b) => new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime());
       }
     }
 

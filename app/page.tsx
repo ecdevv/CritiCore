@@ -1,7 +1,8 @@
 import { headers } from "next/headers";
 import CardGrid from "./components/grid/CardGrid";
-import { CardCategories, SteamCategories } from "@/app/utility/types";
-import { normalizeString } from "@/app/utility/helper";
+import { getBlurDataURL } from "./utility/data";
+import { normalizeString } from "./utility/strings";
+import { CardCategories, SteamCategories } from "./utility/types";
 import { PLACEHOLDER_200X300 } from "./utility/constants";
 
 export default async function Home() {
@@ -28,9 +29,10 @@ export default async function Home() {
     // Setup data for CardGrid with sgdbImages being fetched if steam's image is not available
     const topReleasesDataFinal: CardCategories[] = await Promise.all(
       topReleasesData.map(async (game: SteamCategories) => {
-        const image = game.capsuleImage 
-          ? game.capsuleImage 
-          : (await fetch(`${baseUrl}/api/sgdb/${normalizeString(game.name, true)}`).then(res => res.json())).capsuleImage;
+        const cachedData = game.capsuleImage || (await fetch(`${baseUrl}/api/sgdb/${normalizeString(game.name, true)}`).then(res => res.json())).capsuleImage;
+        const og = cachedData || undefined;
+        const blur = og ? await getBlurDataURL(og) : undefined;
+        const image = og ? { og, blur } : { og: PLACEHOLDER_200X300, blur: undefined };
         return {
           category: 'Top Releases',
           steamid: game.id,
@@ -43,9 +45,10 @@ export default async function Home() {
     );
     const mostPlayedDataFinal: CardCategories[] = await Promise.all(
       mostPlayedData.map(async (game: SteamCategories) => {
-        const image = game.capsuleImage 
-          ? game.capsuleImage 
-          : (await fetch(`${baseUrl}/api/sgdb/${normalizeString(game.name, true)}`).then(res => res.json())).capsuleImage;
+        const cachedData = game.capsuleImage || (await fetch(`${baseUrl}/api/sgdb/${normalizeString(game.name, true)}`).then(res => res.json())).capsuleImage;
+        const og = cachedData || undefined;
+        const blur = og ? await getBlurDataURL(og) : undefined;
+        const image = og ? { og, blur } : { og: PLACEHOLDER_200X300, blur: undefined };
         return {
           category: 'Most Played',
           steamid: game.id,

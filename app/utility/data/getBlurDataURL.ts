@@ -1,4 +1,5 @@
 import sharp from "sharp";
+import getCacheSize from "./getCacheSize";
 
 /**
  * Generates a Base64-encoded blur data URL for an image.
@@ -9,7 +10,7 @@ import sharp from "sharp";
  * @param {number} [options.blur=5] - Blur intensity.
  * @returns {Promise<string>} - A Base64-encoded data URL of the blurred image.
  */
-export default async function generateBlurDataURL(imageBuffer: ArrayBuffer, options = { width: 20, height: 20, blur: 5 }) {
+async function generateBlurDataURL(imageBuffer: ArrayBuffer, options = { width: 20, height: 20, blur: 5 }) {
   const { width, height, blur } = options;
 
   try {
@@ -30,6 +31,43 @@ export default async function generateBlurDataURL(imageBuffer: ArrayBuffer, opti
 
     // Convert to Base64 data URL
     return `data:image/jpeg;base64,${placeholderBuffer.toString("base64")}`;
+  } catch (error) {
+    console.error("Error generating blur data URL:", error);
+    throw new Error("Failed to generate blur data URL.");
+  }
+}
+
+const MAX_CACHE_SIZE = 100 * 1024 * 1024; // 100MB
+const cache = new Map();
+
+export default async function getBlurDataURL(imageUrl: string) {
+  // Check if the image is already cached and start with empty headers
+  const cachedData = cache.get(imageUrl);
+  const headers: Record<string, string> = {};
+
+  // If there's cached data and an ETag, add 'If-None-Match' header
+  if (cachedData && cachedData.etag) headers['If-None-Match'] = cachedData.etag;
+
+  try {
+    const response = await fetch(imageUrl, { headers });
+
+    // If the response status is 304 (Not Modified), return the cached blurDataUrl
+    if (response.status === 304) return cachedData.blurDataUrl;
+
+    const imageBuffer = await response.arrayBuffer();
+    const blurDataUrl = await generateBlurDataURL(imageBuffer);
+    const etag = response.headers.get('etag');
+
+    if (etag) {
+      // Update the cache with the new blurDataUrl and ETag
+      if (getCacheSize(cache) >= MAX_CACHE_SIZE) {
+        const firstKey = cache.keys().next().value;
+        cache.delete(firstKey);
+      }
+      cache.set(imageUrl, { blurDataUrl, etag });
+    }
+
+    return blurDataUrl;
   } catch (error) {
     console.error("Error generating blur data URL:", error);
     throw new Error("Failed to generate blur data URL.");

@@ -4,7 +4,7 @@ export type CardCategories = {
   name: string;
   releaseDate: string; 
   developer: string;
-  capsuleImage: { og: string; blur: string }
+  capsuleImage: { og: string; blur: string | undefined }
 }
 
 export type SteamCategories = {
@@ -14,7 +14,7 @@ export type SteamCategories = {
   releaseDate: string;
   developer: string;
   ageRating: number;
-  capsuleImage: { og: string; blur: string }
+  capsuleImage: string | undefined
 }
 
 export type OCData = {
@@ -33,7 +33,7 @@ export type OCData = {
   totalTopCriticReviews: number | 'N/A' | undefined;
   tier: { name: string | undefined; url: string | undefined };
   url: string | undefined;
-  capsuleImage: { og: string | undefined; blur: string | undefined } | undefined;
+  capsuleImage: string | undefined
 }
 
 export type SteamData = {
@@ -52,7 +52,7 @@ export type SteamData = {
   reviewDesc: string | undefined;
   url: string | undefined;
   devUrl: string | undefined;
-  headerImage: { og: string | undefined; blur: string | undefined } | undefined;
-  capsuleImage: { og: string | undefined; blur: string | undefined } | undefined;
+  headerImage: string | undefined;
+  capsuleImage: string | undefined;
   currentPlayers?: number | undefined;
 }

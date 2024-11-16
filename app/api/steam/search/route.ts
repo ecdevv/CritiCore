@@ -1,26 +1,14 @@
-import { normalizeString, damerauLevenshteinDistance, filterString } from "@/app/utility/helper";
+import levenshtein from 'damerau-levenshtein';
+import { getCacheSize } from "@/app/utility/data";
+import { normalizeString, filterString } from "@/app/utility/strings";
 
-interface SearchResultsCacheEntry {
-  searchResults: { appid: number; name: string; distance: number }[];
-  expires: number;
-}
+const REVALIDATION_TIME = 2 * 60 * 60 * 1000; // Cache for 2 hours
+const MAX_CACHE_SIZE = 100 * 1024 * 1024; // 100MB
+const cache = new Map();
 
-const MAX_CACHE_SIZE = 100;
-const searchResultsCache = new Map<string, SearchResultsCacheEntry>();
-
-async function getSearchResults(baseUrl: string, searchQuery: string): Promise<SearchResultsCacheEntry> {
-  const now = Date.now() / 1000;
-  const cacheKey = normalizeString(searchQuery);
-  const cachedEntry = searchResultsCache.get(cacheKey);
-
-  if (cachedEntry && cachedEntry.expires > now) return cachedEntry;
-
-  // Cache empty entry for 5 minutes fetch the app list
-  if (searchResultsCache.size >= MAX_CACHE_SIZE) {
-    const oldestEntry = Array.from(searchResultsCache).sort((a, b) => a[1].expires - b[1].expires)[0];
-    searchResultsCache.delete(oldestEntry[0]);
-  }
-  searchResultsCache.set(cacheKey, { searchResults: [], expires: now + 300 });
+async function getSearchResults(baseUrl: string, searchQuery: string) {
+  if (cache.has(`search-${searchQuery}`)) return cache.get(`search-${searchQuery}`);
+  if (!searchQuery || searchQuery.length < 4) return [];
 
   // Fetching applist to search for app ID(s) using the query
   const appListResponse = await fetch(`${baseUrl}/api/steam/applist`);
@@ -36,9 +24,9 @@ async function getSearchResults(baseUrl: string, searchQuery: string): Promise<S
   let searchResultsFiltered = searchResults
     .map((app: { appid: number; name: string }) => ({
       ...app,
-      distance: damerauLevenshteinDistance(normalizedQuery, normalizeString(app.name)),
+      distance: levenshtein(normalizedQuery, normalizeString(app.name)).relative,
     }))
-    .filter((app: { distance: number }) => app.distance <= 0.6)
+    .filter((app: { distance: number }) => app.distance <= 0.75)
     .sort((a: { distance: number }, b: { distance: number }) => a.distance - b.distance);
 
   // Use the custom filterString function to filter the search results again and filter out duplicates (such as Gold Edition version of a game)
@@ -56,10 +44,16 @@ async function getSearchResults(baseUrl: string, searchQuery: string): Promise<S
   });
   searchResultsFiltered = Array.from(uniqueApps.values());
 
-  // Update cache entry and return this entry
-  const newEntry = { searchResults: searchResultsFiltered, expires: now + 600 };
-  searchResultsCache.set(cacheKey, newEntry);
-  return newEntry;
+  // Update cache entry and check if it exceeds the maximum size
+  if (getCacheSize(cache) >= MAX_CACHE_SIZE) {
+    const firstKey = cache.keys().next().value;
+    cache.delete(firstKey);
+  }
+  cache.set(`search-${searchQuery}`, searchResultsFiltered);
+  setTimeout(() => cache.delete(`search-${searchQuery}`), REVALIDATION_TIME);
+  if (searchResultsFiltered.length <= 0) setTimeout(() => cache.delete(`search-${searchQuery}`), 60 * 1000);
+
+  return searchResultsFiltered;
 }
 
 export async function GET(request: Request) {
@@ -69,10 +63,11 @@ export async function GET(request: Request) {
   const searchQuery = searchParams.get('q') || '';
 
   try {
-    const { searchResults } = await getSearchResults(baseUrl, searchQuery);
+    const searchResults = await getSearchResults(baseUrl, searchQuery);
     return Response.json({ status: 200, searchResults });
   } catch (error) {
     console.error('STEAM:', error);
     return Response.json({ error: 'STEAM: Internal Server Error' }, { status: 500 });
   }
 }
+

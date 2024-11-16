@@ -1,10 +1,10 @@
 import Image from 'next/image' 
 import Link from 'next/link'
-import { normalizeString } from '@/app/utility/helper'
+import { normalizeString } from '@/app/utility/strings'
 
 interface CardProps {
   name: string;
-  image: { og: string; blur: string };
+  image: { og: string; blur: string | undefined };
 }
 
 const Card = ({ name, image }: CardProps ) => {

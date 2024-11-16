@@ -1,24 +1,14 @@
-interface StoreDataCacheEntry {
-  topReleases: { month: string; appids: number[] }[] | [];
-  mostPlayed: { rank: number; appid: string; lastWeekRank: number; peakInGame: string;}[] | [];
-  expires: number;
-}
+const REVALIDATION_TIME = 1 * 30 * 60 * 1000; // Cache for 30 minutes
+const cache = new Map();
 
-const storeDataCache = new Map<string, StoreDataCacheEntry>();
-
-async function getStoreData(): Promise<StoreDataCacheEntry> {
-  const cacheKey = `store-data`;
-  const now = Date.now() / 1000;
-  const cachedEntry = storeDataCache.get(cacheKey);
-
-  if (cachedEntry && cachedEntry.expires > now) return cachedEntry;
+async function getStoreData() {
+  if (cache.has('charts')) return cache.get('charts');
 
   try {
-    // Cache empty entry for 10 minutes before fetching game data based on the app ID
-    storeDataCache.set(cacheKey, { topReleases: [], mostPlayed: [], expires: now + 300 });
+    // Fetch data from Steam API
     const allResponses = await Promise.all([
-      fetch(`${process.env.STEAM_API_TOP_RELEASES}`),
-      fetch(`${process.env.STEAM_API_MOST_PLAYED}`),
+      fetch(`${process.env.STEAM_API_TOP_RELEASES}`, { next: { revalidate: REVALIDATION_TIME } }),
+      fetch(`${process.env.STEAM_API_MOST_PLAYED}`, { next: { revalidate: REVALIDATION_TIME } }),
     ]);
     const [topReleasesResponse, mostPlayedResponse] = allResponses
     if (!allResponses || !allResponses.every(response => response.ok)) {
@@ -41,10 +31,10 @@ async function getStoreData(): Promise<StoreDataCacheEntry> {
     const newEntry = {
       topReleases,
       mostPlayed,
-      expires: now + 600
     };
+    cache.set('charts', newEntry);
+    setTimeout(() => cache.delete('applist'), REVALIDATION_TIME);
 
-    storeDataCache.set(cacheKey, newEntry);
     return newEntry;
   } catch (error) {
     console.log(`STEAM: Error retrieving store data`);

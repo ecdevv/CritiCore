@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { normalizeString } from '@/app/utility/helper';
+import { normalizeString } from '@/app/utility/strings';
 
 const SearchBar = () => {
   const [searchQuery, setSearchQuery] = React.useState('');

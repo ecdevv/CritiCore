@@ -1,58 +1,23 @@
-import { normalizeString } from "@/app/utility/helper";
-import formatDate from "@/app/utility/formatDate";
-import generateBlurDataURL from "@/app/utility/generateBlurDataURL";
+import { getCacheSize } from "@/app/utility/data";
+import { formatDate } from "@/app/utility/dates";
+import { normalizeString } from "@/app/utility/strings";
 
-interface AppIDCacheEntry {
-  matchingApps: number[] | [];
-  expires: number;
-}
+const MAX_ID_CACHE_SIZE = 50 * 1024 * 1024;       // 50MB
+const ID_REVALIDATION_TIME = 1 * 10 * 60 * 1000;  // 10 minutes
+const appIDCache = new Map();
 
-interface AppDataCacheEntry {
-  id: number | undefined;
-  name: string | undefined;
-  releaseDate: string | undefined;
-  developer: string | undefined;
-  publisher: string | undefined;
-  ageRating: number | undefined;
-  criticScore: number | undefined;
-  userScore: number | undefined;
-  totalPositive: number | undefined;
-  totalNegative: number | undefined;
-  totalReviews: number | undefined;
-  reviewDesc: string | undefined;
-  url: string | undefined;
-  devUrl: string | undefined;
-  headerImage: { og: string | undefined; blur: string | undefined } | undefined;
-  capsuleImage: { og: string | undefined; blur: string | undefined } | undefined;
-  currentPlayers: number | undefined;
-  expires: number;
-}
-
-const MAX_APPID_CACHE_SIZE = 1000;
-const MAX_APPDATA_CACHE_SIZE = 200;
-const appIDCache = new Map<string, AppIDCacheEntry>();
-const appDataCache = new Map<string, AppDataCacheEntry>();
-
-const emptyDataCacheEntry: AppDataCacheEntry = {
-  id: undefined, name: undefined, releaseDate: undefined, developer: undefined, publisher: undefined, ageRating: undefined,
-  criticScore: undefined, userScore: undefined, totalPositive: undefined, totalNegative: undefined, totalReviews: undefined, reviewDesc: undefined,
-  url: undefined, devUrl: undefined, headerImage: undefined, capsuleImage: undefined, currentPlayers: undefined, expires: 0
-};
-
-async function getAppIDByName(baseUrl: string, name: string): Promise<AppIDCacheEntry> {
+async function getAppIDByName(baseUrl: string, name: string) {
   const cacheKey = normalizeString(name);
-  const now = Date.now() / 1000;
-  const cachedEntry = appIDCache.get(cacheKey);
-
-  if (cachedEntry && cachedEntry.expires > now) return cachedEntry;
+  if (appIDCache.has(cacheKey)) return appIDCache.get(cacheKey);
 
   try {
     // Cache empty entry for 5 minutes before fetching (checks if the cache is full)
-    if (appIDCache.size >= MAX_APPID_CACHE_SIZE) {
-      const oldestEntry = Array.from(appIDCache).sort((a, b) => a[1].expires - b[1].expires)[0];
-      appIDCache.delete(oldestEntry[0]);
+    if (getCacheSize(appIDCache) >= MAX_ID_CACHE_SIZE) {
+      const firstKey = appIDCache.keys().next().value as string;
+      appIDCache.delete(firstKey);
     }
-    appIDCache.set(cacheKey, { matchingApps: [], expires: now + 300 });
+    appIDCache.set(cacheKey, []);
+    setTimeout(() => appIDCache.delete(cacheKey), 300 * 1000);  // 5 minutes
 
     // Fetching search data for app ID(s) based on the game name from params in url
     const appListResponse = await fetch(`${baseUrl}/api/steam/applist`);
@@ -63,39 +28,37 @@ async function getAppIDByName(baseUrl: string, name: string): Promise<AppIDCache
     if (!matchingApps.length) throw new Error('No matching app(s) found, status code: 404');
 
     // Update cache entry and return this entry
-    const newEntry = {
-      matchingApps,
-      expires: now + 600, // 10 minutes
-    };
-
-    appIDCache.set(cacheKey, newEntry);
-    return newEntry;
+    appIDCache.set(cacheKey, matchingApps);
+    setTimeout(() => appIDCache.delete(cacheKey), ID_REVALIDATION_TIME);
+    return matchingApps;
   } catch (error) {
     console.log(`STEAM: Error retrieving app id for game name: ${cacheKey}`);
     throw error;
   }
 }
 
-async function getAppData(appid: number): Promise<AppDataCacheEntry> {
-  const cacheKey = `app-${appid}`;
-  const now = Date.now() / 1000;
-  const cachedEntry = appDataCache.get(cacheKey);
+const MAX_DATA_CACHE_SIZE = 150 * 1024 * 1024;      // 150MB
+const DATA_REVALIDATION_TIME = 1 * 5 * 60 * 1000;   // 5 minutes
+const appDataCache = new Map();
 
-  if (cachedEntry && cachedEntry.expires > now) return cachedEntry;
+async function getAppData(appid: number) {
+  const cacheKey = `app-${appid}`;
+  if (appDataCache.has(cacheKey)) return appDataCache.get(cacheKey);
 
   try {
     // Cache empty entry for 5 minutes before fetching (checks if the cache is full)
-    if (appDataCache.size >= MAX_APPDATA_CACHE_SIZE) {
-      const oldestEntry = Array.from(appDataCache).sort((a, b) => a[1].expires - b[1].expires)[0];
-      appDataCache.delete(oldestEntry[0]);
+    if (getCacheSize(appDataCache) >= MAX_DATA_CACHE_SIZE) {
+      const firstKey = appDataCache.keys().next().value as string;
+      appDataCache.delete(firstKey);
     }
-    appDataCache.set(cacheKey, { ...emptyDataCacheEntry, expires: now + 300 });
+    appDataCache.set(cacheKey, {});
+    setTimeout(() => appDataCache.delete(cacheKey), DATA_REVALIDATION_TIME);
 
     // Fetching game data based on the app ID
     const allResponses = await Promise.all([
-      fetch(`${process.env.STEAM_API_APPDETAILS}?${new URLSearchParams({ appids: appid.toString() })}`),
-      fetch(`${process.env.STEAM_API_APPREVIEWS}/${appid}?${new URLSearchParams({ json: '1', language: 'all', purchase_type: 'all' })}`),
-      fetch(`${process.env.STEAM_API_NUM_PLAYERS}?${new URLSearchParams({ appid: appid.toString(), format: 'json' })}`)
+      fetch(`${process.env.STEAM_API_APPDETAILS}?${new URLSearchParams({ appids: appid.toString() })}`, { next: { revalidate: DATA_REVALIDATION_TIME } }),
+      fetch(`${process.env.STEAM_API_APPREVIEWS}/${appid}?${new URLSearchParams({ json: '1', language: 'all', purchase_type: 'all' })}`, { next: { revalidate: DATA_REVALIDATION_TIME } }),
+      fetch(`${process.env.STEAM_API_NUM_PLAYERS}?${new URLSearchParams({ appid: appid.toString(), format: 'json' })}`),
     ]);
     const [detailsResponse, reviewsResponse, playersResponse] = allResponses;
     if (!allResponses) {
@@ -124,6 +87,7 @@ async function getAppData(appid: number): Promise<AppDataCacheEntry> {
     const ageRating = detailsData[appid]?.data?.required_age;
     const url = `${process.env.NEXT_PUBLIC_STEAM_STORE_URL}/${appid}`;
     const devUrl = detailsData[appid]?.data?.website;
+    const headerImage = detailsData[appid]?.data?.header_image;
     const currentPlayers = playersData.response.player_count;
 
     // Calculate critic and user scores
@@ -131,21 +95,10 @@ async function getAppData(appid: number): Promise<AppDataCacheEntry> {
     const criticScore = -1;
     const userScore = Math.floor((totalPositive / totalReviews) * 100);
 
-    // Fetch header image to ensure it exists, otherwise return undefined headerImage
-    const headerImgTestUrl = detailsData[appid]?.data?.header_image;
-    const headerImgResponse = await fetch(headerImgTestUrl);
-    const headerImgBuffer = headerImgResponse.ok ? await headerImgResponse.arrayBuffer() : undefined;
-    const headerImgBlur = headerImgBuffer ? await generateBlurDataURL(headerImgBuffer) : undefined;
-    const headerImgUrl = headerImgResponse.ok ? headerImgTestUrl : undefined;
-    const headerImage = headerImgUrl ? { og: headerImgUrl, blur: headerImgBlur } : undefined;
-
     // Fetch capsule image to ensure it exists, otherwise return undefined capsuleImage
-    const capsuleImgTestUrl = process.env.STEAM_CDN_CAPSULE + '/' + id + '/' + 'library_600x900_2x.jpg';
-    const capsuleImgResponse = await fetch(capsuleImgTestUrl);
-    const capsuleImgBuffer = capsuleImgResponse.ok ? await capsuleImgResponse.arrayBuffer() : undefined;
-    const capsuleImgBlur = capsuleImgBuffer ? await generateBlurDataURL(capsuleImgBuffer) : undefined;
-    const capsuleImgUrl = capsuleImgResponse.ok ? capsuleImgTestUrl : undefined;
-    const capsuleImage = capsuleImgUrl ? { og: capsuleImgUrl, blur: capsuleImgBlur } : undefined;
+    const capsuleImageUrl = process.env.STEAM_CDN_CAPSULE + '/' + id + '/' + 'library_600x900_2x.jpg';
+    const capsuleImageResponse = await fetch(capsuleImageUrl, { method: 'HEAD' });
+    const capsuleImage = capsuleImageResponse.ok ? capsuleImageUrl : undefined;
 
     // Update cache entry and return this entry
     const newEntry = {
@@ -166,16 +119,17 @@ async function getAppData(appid: number): Promise<AppDataCacheEntry> {
       headerImage,
       capsuleImage,
       currentPlayers,
-      expires: now + 300  // 5 minutes
     };
 
     // Cache the appIDCache for the normalized name to skip appIDByName calls since normalized names are === page's game name
     const normalizedAppName = normalizeString(name);
     if (normalizedAppName) {
-      appIDCache.set(normalizedAppName, { matchingApps: [id], expires: now + 600 });
+      appIDCache.set(normalizedAppName, [id] as number[]);
+      setTimeout(() => appIDCache.delete(normalizedAppName), ID_REVALIDATION_TIME);
     }
 
     appDataCache.set(`app-${id}`, newEntry);
+    setTimeout(() => appDataCache.delete(`app-${id}`), DATA_REVALIDATION_TIME);
     return newEntry;
   } catch (error) {
     console.log(`STEAM: Error retrieving app data for app ID: ${appid}`);
@@ -183,19 +137,10 @@ async function getAppData(appid: number): Promise<AppDataCacheEntry> {
   }
 }
 
-async function getMultipleAppData(appids: number[]): Promise<AppDataCacheEntry[]> {
-  // Filters is required for multiple app ids to work but it does not return the full data
-  // Therefore we are only using it for its response/data validity
-  const response = await fetch(`${process.env.STEAM_API_APPDETAILS}?${new URLSearchParams({ appids: appids.join(','), filters: 'price_overview' })}`);
-  if (!response.ok) throw new Error(`Failed to fetch multiple app(s) data, status code: ${response.status}`);
-  const data = await response.json();
-  if (!data) throw new Error('Invalid multiple app(s) data, status code: 404');
-
-  // Filter out invalid app IDs and retrieve app data for valid app IDs.
-  // If the app ID is not a game or errors occur, getAppData will throw an error and validAppIDs will not include the app ID by returning null.
-  const validAppIDs = Object.keys(data).filter((appid: string) => data[appid].success && data[appid].data);
+async function getMultipleAppData(appids: number[]) {
+  // Fetch app data for each app ID
   const appDatas = await Promise.all(
-    validAppIDs.map(async (appid) => {
+    appids.map(async (appid) => {
       try {
         const appData = await getAppData(Number(appid));
         if (!appData || !appData.id) return null;
@@ -234,10 +179,10 @@ export async function GET(request: Request) {
     }
     
     // Fetch based on the normalized name by getting ids from appIDByName then fetching app data with ids
-    const { matchingApps } = await getAppIDByName(baseUrl, identifier);
+    const matchingApps = await getAppIDByName(baseUrl, identifier);
     if (!matchingApps.length) throw new Error('CACHED - No matching app(s) found, status code: 404');
     const appData = (
-      await Promise.all(matchingApps.map(appid => getAppData(appid).catch(() => null)))
+      await Promise.all(matchingApps.map((appid: number) => getAppData(appid).catch(() => null)))
     ).filter(data => data !== null);
     if (!appData.length) throw new Error(`No app data found for matching app(s): [${matchingApps.join(',')}], status code: 404`);
 

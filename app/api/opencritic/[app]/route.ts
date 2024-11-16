@@ -1,55 +1,22 @@
-import { normalizeString } from '@/app/utility/helper';
-import generateBlurDataURL from '@/app/utility/generateBlurDataURL';
+import { getCacheSize } from '@/app/utility/data';
+import { normalizeString } from '@/app/utility/strings';
 
-interface AppCacheEntry {
-  appid: number | undefined;
-  expires: number;
-}
+const MAX_ID_CACHE_SIZE = 50 * 1024 * 1024;       // 50MB
+const ID_REVALIDATION_TIME = 24 * 60 * 60 * 1000;  // 24 hours
+const appIDCache = new Map();
 
-interface AppDataCacheEntry {
-  id: number | undefined;
-  name: string | undefined;
-  releaseDate: string | undefined;
-  developer: string | undefined;
-  publisher: string | undefined;
-  hasLootBoxes: boolean | undefined;
-  percentRec: number | undefined;
-  criticScore: number | undefined;
-  userScore: number | undefined;
-  totalCriticReviews: number | undefined;
-  totalUserReviews: number | undefined;
-  totalTopCriticReviews: number | undefined;
-  tier: { name: string | undefined; url: string | undefined } | undefined;
-  url: string | undefined;
-  capsuleImage: { og: string | undefined; blur: string | undefined } | undefined;
-  expires: number;
-}
-
-const MAX_APPID_CACHE_SIZE = 1000;
-const MAX_APPDATA_CACHE_SIZE = 200;
-const appIDCache = new Map<string, AppCacheEntry>();
-const appDataCache = new Map<string, AppDataCacheEntry>();
-
-const emptyDataCacheEntry: AppDataCacheEntry = {
-  id: undefined, name: undefined, releaseDate: undefined, developer: undefined, publisher: undefined, hasLootBoxes: undefined,
-  percentRec: undefined, criticScore: undefined, userScore: undefined, totalCriticReviews: undefined, totalUserReviews: undefined,
-  totalTopCriticReviews: undefined, tier: undefined, url: undefined, capsuleImage: undefined, expires: 0
-}
-
-async function getAppIDByName(name: string): Promise<AppCacheEntry> {
+async function getAppIDByName(name: string) {
   const cacheKey = normalizeString(name);
-  const now = Date.now() / 1000;
-  const cachedEntry = appIDCache.get(cacheKey);
-
-  if (cachedEntry && cachedEntry.expires > now) return cachedEntry;
+  if (appIDCache.has(cacheKey)) return appIDCache.get(cacheKey);
 
   try {
-    // Cache empty entry for 24 hours before fetching search data
-    if (appIDCache.size >= MAX_APPID_CACHE_SIZE) {
-      const oldestEntry = Array.from(appIDCache).sort((a, b) => a[1].expires - b[1].expires)[0];
-      appIDCache.delete(oldestEntry[0]);
+    // Cache empty entry for 24 hours before fetching (checks if the cache is full)
+    if (getCacheSize(appIDCache) >= MAX_ID_CACHE_SIZE) {
+      const firstKey = appIDCache.keys().next().value as string;
+      appIDCache.delete(firstKey);
     }
-    appIDCache.set(cacheKey, { appid: undefined, expires: now + 86400 });
+    appIDCache.set(cacheKey, []);
+    setTimeout(() => appIDCache.delete(cacheKey), ID_REVALIDATION_TIME);
 
     // Fetching search data for app ID(s) based on the game name from params in url
     const url = `${process.env.OPENCRITIC_API_SEARCH}?${new URLSearchParams({ criteria: cacheKey })}`;
@@ -71,33 +38,31 @@ async function getAppIDByName(name: string): Promise<AppCacheEntry> {
     if (!appid) throw new Error('Invalid App ID, status code: 404');
 
     // Update cache entry and return this entry
-    const newEntry = { 
-      appid, 
-      expires: now + 86400  // Cache for one day
-    };
-
-    appIDCache.set(cacheKey, newEntry);
-    return newEntry;
+    appIDCache.set(cacheKey, appid);
+    setTimeout(() => appIDCache.delete(cacheKey), ID_REVALIDATION_TIME);
+    return appid;
   } catch (error) {
     console.log(`OPENCRITIC: Error retrieving app id for game name: ${cacheKey}`);
     throw error;
   }
 }
 
-async function getAppData(appid: number): Promise<AppDataCacheEntry> {
-  const cacheKey = `app-${appid}`;
-  const now = Date.now() / 1000;
-  const cachedEntry = appDataCache.get(cacheKey);
+const MAX_DATA_CACHE_SIZE = 150 * 1024 * 1024;       // 150MB
+const DATA_REVALIDATION_TIME = 24 * 10 * 60 * 1000;  // 24 hours
+const appDataCache = new Map();
 
-  if (cachedEntry && cachedEntry.expires > now) return cachedEntry;
+async function getAppData(appid: number) {
+  const cacheKey = `app-${appid}`;
+  if (appDataCache.has(cacheKey)) return appDataCache.get(cacheKey);
 
   try {
-    // Cache empty entry for 24 hours before fetching game data
-    if (appDataCache.size >= MAX_APPDATA_CACHE_SIZE) {
-      const oldestEntry = Array.from(appDataCache).sort((a, b) => a[1].expires - b[1].expires)[0];
-      appDataCache.delete(oldestEntry[0]);
+    // Cache empty entry for 24 hours before fetching (checks if the cache is full)
+    if (getCacheSize(appDataCache) >= MAX_DATA_CACHE_SIZE) {
+      const firstKey = appDataCache.keys().next().value as string;
+      appDataCache.delete(firstKey);
     }
-    appDataCache.set(cacheKey, { ...emptyDataCacheEntry, expires: now + 86400 });
+    appDataCache.set(cacheKey, {});
+    setTimeout(() => appDataCache.delete(cacheKey), DATA_REVALIDATION_TIME);
 
     // Fetching game data for app ID(s)
     const url = `${process.env.OPENCRITIC_API_GAME}/${appid}`;
@@ -132,12 +97,9 @@ async function getAppData(appid: number): Promise<AppDataCacheEntry> {
 
     // Fetch capsule image to ensure it exists, otherwise return undefined capsuleImage
     const boxImageExists = !!data.images?.box?.og;
-    const capsuleImgTestUrl = boxImageExists ? 'https://' + process.env.OPENCRITIC_IMG_HOST + '/' + data.images.box.og : undefined; // Box image
-    const capsuleImgResponse = capsuleImgTestUrl ? await fetch(capsuleImgTestUrl) : undefined;
-    const capsuleImgBuffer = capsuleImgResponse?.ok ? await capsuleImgResponse.arrayBuffer() : undefined;
-    const capsuleImgBlur = capsuleImgBuffer ? await generateBlurDataURL(capsuleImgBuffer) : undefined;
-    const capsuleImgUrl = capsuleImgResponse?.ok ? capsuleImgTestUrl : undefined;
-    const capsuleImage = capsuleImgUrl ? { og: capsuleImgUrl, blur: capsuleImgBlur } : undefined;
+    const capsuleImageUrl = boxImageExists ? 'https://' + process.env.OPENCRITIC_IMG_HOST + '/' + data.images.box.og : undefined; // Box image
+    const capsuleImageResponse = capsuleImageUrl ? await fetch(capsuleImageUrl, { method: 'HEAD' }) : undefined;
+    const capsuleImage = capsuleImageResponse?.ok ? capsuleImageUrl : undefined;
     
     // Update cache entry and return this entry
     const newEntry = {
@@ -156,16 +118,17 @@ async function getAppData(appid: number): Promise<AppDataCacheEntry> {
       tier,
       url: ocUrl,
       capsuleImage,
-      expires: now + 86400 // Cache for one day
     };
 
     // Cache the appIDCache for the normalized name to skip appIDByName calls since normalized names are === page's game name
     const normalizedAppName = normalizeString(name);
     if (normalizedAppName) {
-      appIDCache.set(normalizedAppName, { appid: id, expires: now + 86400 });
+      appIDCache.set(normalizedAppName, id);
+      setTimeout(() => appIDCache.delete(normalizedAppName), ID_REVALIDATION_TIME);
     }
 
     appDataCache.set(`app-${id}`, newEntry);
+    setTimeout(() => appDataCache.delete(`app-${id}`), DATA_REVALIDATION_TIME);
     return newEntry;
   } catch (error) {
     console.log(`OPENCRITIC: Error retrieving app data for app ID: ${appid}`);
@@ -180,8 +143,8 @@ export async function GET(request: Request) {
 
   try {
     // If the identifier is a number, skip the search for app ID
-    const appid = isNaN(Number(identifier)) ? (await getAppIDByName(identifier)).appid : Number(identifier);
-    if (appid === -1) throw new Error('CACHED - Invalid App ID, status code: 404');
+    const appid = isNaN(Number(identifier)) ? (await getAppIDByName(identifier)) : Number(identifier);
+    if (!appid) throw new Error('CACHED - Invalid App ID, status code: 404');
     const data = await getAppData(appid as number);
 
     return Response.json({ status: 200, ...data });
