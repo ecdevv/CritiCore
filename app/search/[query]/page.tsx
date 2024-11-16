@@ -29,22 +29,26 @@ export default async function SearchPage({ params }: SearchProps) {
       const { appDatas = [], appData = [] } = await resultsDataResponse.json();
       const resultsData = [...appDatas, appData].flat();
       
-      // If we have the data for the results, fetch data from sgdb and setup data for CardGrid
+      // If we have the data for the results, setup data for CardGrid with sgdbImages being fetched if steam's image is not available
       if (resultsData.length) {
-        const sgdbResponse = await fetch(`${baseUrl}/api/sgdb/${resultsData.map((game: { name: string }) => normalizeString(game.name, true)).join(',')}`);
-        const sgdbData = await sgdbResponse.json();
-
-        categoryData = resultsData
-          .filter((game: SteamCategories) => game.id)
-          .map((game: SteamCategories, index: number) => ({
-            category: 'Search Results',
-            steamid: game.id,
-            name: game.name,
-            releaseDate: game.releaseDate,
-            developer: game.developer,
-            capsuleImage: game.capsuleImage || sgdbData.images[index].capsuleImage || { og: PLACEHOLDER_200X300 },
-          }))
-          .reverse();
+        categoryData = await Promise.all(
+          resultsData
+            .filter((game: SteamCategories) => game.id)
+            .map(async (game: SteamCategories) => {
+              const image = game.capsuleImage 
+                ? game.capsuleImage 
+                : (await fetch(`${baseUrl}/api/sgdb/${normalizeString(game.name, true)}`).then(res => res.json())).capsuleImage;
+              return {
+                category: 'Search Results',
+                steamid: game.id,
+                name: game.name,
+                releaseDate: game.releaseDate,
+                developer: game.developer,
+                capsuleImage: image || { og: PLACEHOLDER_200X300 },
+              };
+            })
+        );
+        categoryData.reverse();
       }
     }
 

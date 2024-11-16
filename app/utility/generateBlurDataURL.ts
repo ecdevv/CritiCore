@@ -13,11 +13,19 @@ export default async function generateBlurDataURL(imageBuffer: ArrayBuffer, opti
   const { width, height, blur } = options;
 
   try {
+    // Get the dimensions of the image
+    const image = sharp(imageBuffer);
+    const { width: imgWidth, height: imgHeight } = await image.metadata();
+
+    // Resize the image if it's larger than the specified dimensions
+    if ((imgWidth && (imgWidth > width)) || (imgHeight && (imgHeight > height))) {
+      image.resize(width, height, { fit: "inside" });
+    }
+    
     // Process the image with Sharp
-    const placeholderBuffer = await sharp(imageBuffer)
-      .resize(width, height, { fit: "inside" }) // Resize to small dimensions
+    const placeholderBuffer = await image
       .blur(blur) // Apply blur effect
-      .toFormat("jpeg", { quality: 50 }) // Convert to JPEG for smaller size
+      .toFormat("webp", { quality: 50 }) // Convert to WebP for smaller size
       .toBuffer();
 
     // Convert to Base64 data URL

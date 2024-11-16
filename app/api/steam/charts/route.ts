@@ -4,18 +4,18 @@ interface StoreDataCacheEntry {
   expires: number;
 }
 
-const storeDataCache: Record<string, StoreDataCacheEntry> = {};
+const storeDataCache = new Map<string, StoreDataCacheEntry>();
 
 async function getStoreData(): Promise<StoreDataCacheEntry> {
   const cacheKey = `store-data`;
   const now = Date.now() / 1000;
-  const cachedEntry = storeDataCache[cacheKey];
+  const cachedEntry = storeDataCache.get(cacheKey);
 
   if (cachedEntry && cachedEntry.expires > now) return cachedEntry;
 
   try {
     // Cache empty entry for 10 minutes before fetching game data based on the app ID
-    storeDataCache[cacheKey] = { topReleases: [], mostPlayed: [], expires: now + 300 };
+    storeDataCache.set(cacheKey, { topReleases: [], mostPlayed: [], expires: now + 300 });
     const allResponses = await Promise.all([
       fetch(`${process.env.STEAM_API_TOP_RELEASES}`),
       fetch(`${process.env.STEAM_API_MOST_PLAYED}`),
@@ -44,7 +44,7 @@ async function getStoreData(): Promise<StoreDataCacheEntry> {
       expires: now + 600
     };
 
-    storeDataCache[cacheKey] = newEntry;
+    storeDataCache.set(cacheKey, newEntry);
     return newEntry;
   } catch (error) {
     console.log(`STEAM: Error retrieving store data`);

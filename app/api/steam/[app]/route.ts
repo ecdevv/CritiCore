@@ -28,8 +28,10 @@ interface AppDataCacheEntry {
   expires: number;
 }
 
-const appIDCache: Record<string, AppIDCacheEntry> = {};
-const appDataCache: Record<string, AppDataCacheEntry> = {};
+const MAX_APPID_CACHE_SIZE = 1000;
+const MAX_APPDATA_CACHE_SIZE = 200;
+const appIDCache = new Map<string, AppIDCacheEntry>();
+const appDataCache = new Map<string, AppDataCacheEntry>();
 
 const emptyDataCacheEntry: AppDataCacheEntry = {
   id: undefined, name: undefined, releaseDate: undefined, developer: undefined, publisher: undefined, ageRating: undefined,
@@ -40,13 +42,19 @@ const emptyDataCacheEntry: AppDataCacheEntry = {
 async function getAppIDByName(baseUrl: string, name: string): Promise<AppIDCacheEntry> {
   const cacheKey = normalizeString(name);
   const now = Date.now() / 1000;
-  const cachedEntry = appIDCache[cacheKey];
+  const cachedEntry = appIDCache.get(cacheKey);
 
   if (cachedEntry && cachedEntry.expires > now) return cachedEntry;
 
-  try {  
-    // Cache empty entry for 5 minutes before fetching search data for app ID(s) based on the game name from params in url
-    appIDCache[cacheKey] = { matchingApps: [], expires: now + 300 };
+  try {
+    // Cache empty entry for 5 minutes before fetching (checks if the cache is full)
+    if (appIDCache.size >= MAX_APPID_CACHE_SIZE) {
+      const oldestEntry = Array.from(appIDCache).sort((a, b) => a[1].expires - b[1].expires)[0];
+      appIDCache.delete(oldestEntry[0]);
+    }
+    appIDCache.set(cacheKey, { matchingApps: [], expires: now + 300 });
+
+    // Fetching search data for app ID(s) based on the game name from params in url
     const appListResponse = await fetch(`${baseUrl}/api/steam/applist`);
     if (!appListResponse.ok) throw new Error(`Failed to fetch app list data, status code: ${appListResponse.status}`);
     const appListData = await appListResponse.json();
@@ -60,7 +68,7 @@ async function getAppIDByName(baseUrl: string, name: string): Promise<AppIDCache
       expires: now + 600, // 10 minutes
     };
 
-    appIDCache[cacheKey] = newEntry;
+    appIDCache.set(cacheKey, newEntry);
     return newEntry;
   } catch (error) {
     console.log(`STEAM: Error retrieving app id for game name: ${cacheKey}`);
@@ -71,13 +79,19 @@ async function getAppIDByName(baseUrl: string, name: string): Promise<AppIDCache
 async function getAppData(appid: number): Promise<AppDataCacheEntry> {
   const cacheKey = `app-${appid}`;
   const now = Date.now() / 1000;
-  const cachedEntry = appDataCache[cacheKey];
+  const cachedEntry = appDataCache.get(cacheKey);
 
   if (cachedEntry && cachedEntry.expires > now) return cachedEntry;
 
   try {
-    // Cache empty entry for 5 minutes before fetching game data based on the app ID and 
-    appDataCache[cacheKey] = { ...emptyDataCacheEntry, expires: now + 300 }
+    // Cache empty entry for 5 minutes before fetching (checks if the cache is full)
+    if (appDataCache.size >= MAX_APPDATA_CACHE_SIZE) {
+      const oldestEntry = Array.from(appDataCache).sort((a, b) => a[1].expires - b[1].expires)[0];
+      appDataCache.delete(oldestEntry[0]);
+    }
+    appDataCache.set(cacheKey, { ...emptyDataCacheEntry, expires: now + 300 });
+
+    // Fetching game data based on the app ID
     const allResponses = await Promise.all([
       fetch(`${process.env.STEAM_API_APPDETAILS}?${new URLSearchParams({ appids: appid.toString() })}`),
       fetch(`${process.env.STEAM_API_APPREVIEWS}/${appid}?${new URLSearchParams({ json: '1', language: 'all', purchase_type: 'all' })}`),
@@ -158,10 +172,10 @@ async function getAppData(appid: number): Promise<AppDataCacheEntry> {
     // Cache the appIDCache for the normalized name to skip appIDByName calls since normalized names are === page's game name
     const normalizedAppName = normalizeString(name);
     if (normalizedAppName) {
-      appIDCache[normalizedAppName] = { matchingApps: [id], expires: now + 600 }; // 10 minutes
+      appIDCache.set(normalizedAppName, { matchingApps: [id], expires: now + 600 });
     }
 
-    appDataCache[cacheKey] = newEntry;
+    appDataCache.set(`app-${id}`, newEntry);
     return newEntry;
   } catch (error) {
     console.log(`STEAM: Error retrieving app data for app ID: ${appid}`);

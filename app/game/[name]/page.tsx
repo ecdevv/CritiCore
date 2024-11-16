@@ -27,19 +27,19 @@ export default async function Game({ params, searchParams }: GameProps) {
   const displayType = (await searchParams).display as DisplayType || 'none';
   const name = (await params).name || '';
 
-  // Fetching API data from Metacritic, OpenCritic, and Steam. OpenCritic API is limited to 25 searches per day and 200 requests per day, so usually using dummy data
+  // Fetching API data from OpenCritic, Steam, and SGDB. OpenCritic API is limited to 25 searches per day and 200 requests per day, so usually using dummy data
   // const ocData = await fetch(`${baseUrl}/api/opencritic/${name}`).then(res => res.json());
   const ocData = { status: 200, id: undefined, name: undefined, releaseDate: undefined, developer: undefined, publisher: undefined,
     hasLootBoxes: true, percentRec: 91, criticScore: 88, userScore: -1, totalCriticReviews: 84, totalUserReviews: -1, totalTopCriticReviews: -1,
     tier: { name: 'Mighty', url: 'https://' + process.env.OPENCRITIC_IMG_HOST + '/mighty-man/' + 'mighty' + '-man.png'}, url: 'https://opencritic.com/', capsuleImage: undefined
   };
   const steamData = await fetch(`${baseUrl}/api/steam/${name}`).then(res => res.json());
-  const sgdbData = await fetch(`${baseUrl}/api/sgdb/${name}`).then(res => res.json());;
+  const sgdbData = fetch(`${baseUrl}/api/sgdb/${name}`).then(res => res.json());
   const responseStatus = ocData.status === 200 || steamData.status === 200 ? 200 : 404;
   const displayName = ocData.name || steamData.name || 'N/A';
   const releaseDate = ocData.releaseDate || steamData.releaseDate || 'N/A';
   const developer = ocData.developer || steamData.developer || 'N/A';
-  const capsuleImage = steamData.capsuleImage || ocData.capsuleImage || sgdbData.capsuleImage || { og: PLACEHOLDER_450X675 };
+  const capsuleImage = steamData.capsuleImage || ocData.capsuleImage || (await sgdbData).capsuleImage || { og: PLACEHOLDER_450X675 };
   const validScores = ocData.criticScore >= 0 || ocData.userScore >= 0 || steamData.criticScore >= 0 || steamData.userScore >= 0;
 
   const scores = {

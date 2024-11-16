@@ -5,17 +5,24 @@ interface SearchResultsCacheEntry {
   expires: number;
 }
 
-const searchResultsCache: Record<string, SearchResultsCacheEntry> = {};
+const MAX_CACHE_SIZE = 100;
+const searchResultsCache = new Map<string, SearchResultsCacheEntry>();
 
 async function getSearchResults(baseUrl: string, searchQuery: string): Promise<SearchResultsCacheEntry> {
   const now = Date.now() / 1000;
   const cacheKey = normalizeString(searchQuery);
-  const cachedEntry = searchResultsCache[cacheKey];
+  const cachedEntry = searchResultsCache.get(cacheKey);
 
   if (cachedEntry && cachedEntry.expires > now) return cachedEntry;
 
   // Cache empty entry for 5 minutes fetch the app list
-  searchResultsCache[cacheKey] = { searchResults: [], expires: now + 300 };
+  if (searchResultsCache.size >= MAX_CACHE_SIZE) {
+    const oldestEntry = Array.from(searchResultsCache).sort((a, b) => a[1].expires - b[1].expires)[0];
+    searchResultsCache.delete(oldestEntry[0]);
+  }
+  searchResultsCache.set(cacheKey, { searchResults: [], expires: now + 300 });
+
+  // Fetching applist to search for app ID(s) using the query
   const appListResponse = await fetch(`${baseUrl}/api/steam/applist`);
   if (!appListResponse.ok) throw new Error(`Failed to fetch app list data, status code: ${appListResponse.status}`);
   const appListData = await appListResponse.json();
@@ -51,7 +58,7 @@ async function getSearchResults(baseUrl: string, searchQuery: string): Promise<S
 
   // Update cache entry and return this entry
   const newEntry = { searchResults: searchResultsFiltered, expires: now + 600 };
-  searchResultsCache[cacheKey] = newEntry;
+  searchResultsCache.set(cacheKey, newEntry);
   return newEntry;
 }
 

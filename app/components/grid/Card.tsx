@@ -2,7 +2,12 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { normalizeString } from '@/app/utility/helper'
 
-const Card = ({ name, image }: { name: string; image: { og: string; blur: string } }) => {
+interface CardProps {
+  name: string;
+  image: { og: string; blur: string };
+}
+
+const Card = ({ name, image }: CardProps ) => {
   return (
     <Link href={`/game/${normalizeString(name, true)}`} className='transition ease-in-out hover:scale-110'>
       <Image

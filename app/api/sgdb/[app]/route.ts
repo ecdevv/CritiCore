@@ -6,24 +6,31 @@ interface ExtendedSGDBGame extends SGDBGame {
   release_date: string;
 }
 
-interface SDGBCacheEntry {
+interface SGDBCacheEntry {
   capsuleImage: { og: string | undefined; blur: string | undefined } | undefined;
   expires: number;
 }
 
-const sdgbCache: Record<string, SDGBCacheEntry> = {};
+const MAX_SGDB_CACHE_SIZE = 1000;
+const sgdbCache = new Map<string, SGDBCacheEntry>();
 
-async function getSGDBImage(name: string): Promise<SDGBCacheEntry> {
+async function getSGDBImage(name: string): Promise<SGDBCacheEntry> {
   const cacheKey = `sgdb-${name}`;
   const now = Date.now() / 1000;
-  const cachedEntry = sdgbCache[cacheKey];
+  const cachedEntry = sgdbCache.get(cacheKey);
 
   if (cachedEntry && cachedEntry.expires > now) return cachedEntry;
 
   try {
-    // Cache empty entry for 10 minutes before fetch SGDB grids for app ID based on name (the results have to have a release date to count as a game);
+    // Cache empty entry for 5 minutes before fetching SGDB grids
+    if (sgdbCache.size >= MAX_SGDB_CACHE_SIZE) {
+      const oldestEntry = Array.from(sgdbCache).sort((a, b) => a[1].expires - b[1].expires)[0];
+      sgdbCache.delete(oldestEntry[0]);
+    }
+    sgdbCache.set(cacheKey, { capsuleImage: undefined, expires: now + 300 });
+
+    // Fetching SGDB grids for app ID based on name (the results have to have a release date to count as a game);
     // Find the first (best) static grid/capsule image
-    sdgbCache[cacheKey] = { capsuleImage: undefined, expires: now + 300 };
     const client = new SGDB(`${process.env.SGDB_API_KEY}`);
     const searchData = await client.searchGame(name) as ExtendedSGDBGame[];
     const appid = searchData.find((data) => data.release_date !== undefined)?.id as number;
@@ -41,7 +48,7 @@ async function getSGDBImage(name: string): Promise<SDGBCacheEntry> {
 
     // Update cache entry and return this entry
     const newEntry = { capsuleImage, expires: now + 600 };
-    sdgbCache[cacheKey] = newEntry;
+    sgdbCache.set(cacheKey, newEntry);
     return newEntry;
   } catch (error) {
     console.log(`SGDB: Error retrieving SGDB grids data for app: ${name}`);

@@ -11,24 +11,25 @@ import { enUS, fr, zhCN } from 'date-fns/locale'
 
 // Define possible formats and locales to try
 const formats = [
-  'MMM dd, yyyy',     // e.g., "Feb 24, 2022"
-  'dd MMM, yyyy',     // e.g., "24 Feb, 2022"
-  'dd MMM yyyy',      // e.g., "24 Feb 2022"
-  'dd MMM. yyyy',     // e.g., "24 févr. 2022"
-  'MMMM dd, yyyy',    // e.g., "February 24, 2022"
-  'MMM dd yyyy',      // e.g., "Feb 24 2022"
-  'MMM. dd, yyyy',    // e.g., "Févr. 24, 2022"
-  'd MMM yyyy',       // e.g., "4 Mar 2022"
-  'd MMM, yyyy',      // e.g., "4 Mar, 2022"
-  'dd MMMM yyyy',     // e.g., "24 February 2022"
-  'MMMM dd yyyy',     // e.g., "February 24 2022"
-  'dd/MM/yyyy',       // e.g., "24/02/2022"
-  'd/MM/yyyy',        // e.g., "4/02/2022"
-  'yyyy-MM-dd',       // e.g., "2022-02-24"
-  'yyyy年MM月dd日',    // e.g., "2022年02月24日" (Chinese)
-  'dd.MM.yyyy',       // e.g., "24.02.2022" (German)
-  'dd-MM-yyyy',        // e.g., "24-02-2022" (Dutch)
-  'MMM yyyy',         // e.g., "Feb 2022"
+  'MMM dd, yyyy',           // e.g., "Feb 24, 2022"
+  'dd MMM, yyyy',           // e.g., "24 Feb, 2022"
+  'dd MMM yyyy',            // e.g., "24 Feb 2022"
+  'dd MMM. yyyy',           // e.g., "24 févr. 2022"
+  'MMMM dd, yyyy',          // e.g., "February 24, 2022"
+  'MMM dd yyyy',            // e.g., "Feb 24 2022"
+  'MMM. dd, yyyy',          // e.g., "Févr. 24, 2022"
+  'd MMM yyyy',             // e.g., "4 Mar 2022"
+  'd MMM, yyyy',            // e.g., "4 Mar, 2022"
+  'dd MMMM yyyy',           // e.g., "24 February 2022"
+  'MMMM dd yyyy',           // e.g., "February 24 2022"
+  'dd/MM/yyyy',             // e.g., "24/02/2022"
+  'd/MM/yyyy',              // e.g., "4/02/2022"
+  'yyyy-MM-dd',             // e.g., "2022-02-24"
+  'yyyy年MM月dd日',           // e.g., "2022年02月24日" (Chinese)
+  'yyyy 年 MM 月 dd 日',      // e.g., "2022年02月24日" (Chinese)
+  'dd.MM.yyyy',             // e.g., "24.02.2022" (German)
+  'dd-MM-yyyy',             // e.g., "24-02-2022" (Dutch)
+  'MMM yyyy',                // e.g., "Feb 2022"
 ];
 
 export default function formatDate(dateStr: string): string {

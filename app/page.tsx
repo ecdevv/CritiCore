@@ -25,30 +25,37 @@ export default async function Home() {
       mostPlayedResponse.json().then(data => data.appDatas)
     ]);
 
-    // Get the grid images from SGDB
-    const [sgdbTopData, sgdbMostData] = await Promise.all([
-      topReleasesData?.length > 0 ? fetch(`${baseUrl}/api/sgdb/${topReleasesData.map((game: { name: string }) => normalizeString(game.name, true)).join(',')}`).then(res => res.json()) : Promise.resolve({}),
-      mostPlayedData?.length > 0 ? fetch(`${baseUrl}/api/sgdb/${mostPlayedData.map((game: { name: string }) => normalizeString(game.name, true)).join(',')}`).then(res => res.json()) : Promise.resolve({}),
-    ]);
-    
-    // Setup data for CardGrid
-    const topReleasesDataFinal: CardCategories[] = topReleasesData.map((game: SteamCategories) => ({
-      category: 'Top Releases',
-      steamid: game.id,
-      name: game.name,
-      releaseDate: game.releaseDate,
-      developer: game.developer,
-      capsuleImage: game.capsuleImage || sgdbTopData.images[topReleasesData.indexOf(game)]?.capsuleImage || { og: PLACEHOLDER_200X300 },
-    }));
-    const mostPlayedDataFinal: CardCategories[] = mostPlayedData.map((game: SteamCategories) => ({
-      category: 'Most Played',
-      steamid: game.id,
-      name: game.name,
-      releaseDate: game.releaseDate,
-      developer: game.developer,
-      capsuleImage: game.capsuleImage || sgdbMostData.images[mostPlayedData.indexOf(game)]?.capsuleImage || { og: PLACEHOLDER_200X300 },
-    }));
-
+    // Setup data for CardGrid with sgdbImages being fetched if steam's image is not available
+    const topReleasesDataFinal: CardCategories[] = await Promise.all(
+      topReleasesData.map(async (game: SteamCategories) => {
+        const image = game.capsuleImage 
+          ? game.capsuleImage 
+          : (await fetch(`${baseUrl}/api/sgdb/${normalizeString(game.name, true)}`).then(res => res.json())).capsuleImage;
+        return {
+          category: 'Top Releases',
+          steamid: game.id,
+          name: game.name,
+          releaseDate: game.releaseDate,
+          developer: game.developer,
+          capsuleImage: image || { og: PLACEHOLDER_200X300 },
+        };
+      })
+    );
+    const mostPlayedDataFinal: CardCategories[] = await Promise.all(
+      mostPlayedData.map(async (game: SteamCategories) => {
+        const image = game.capsuleImage 
+          ? game.capsuleImage 
+          : (await fetch(`${baseUrl}/api/sgdb/${normalizeString(game.name, true)}`).then(res => res.json())).capsuleImage;
+        return {
+          category: 'Most Played',
+          steamid: game.id,
+          name: game.name,
+          releaseDate: game.releaseDate,
+          developer: game.developer,
+          capsuleImage: image || { og: PLACEHOLDER_200X300 },
+        };
+      })
+    );
 
     return (
       <div className="flex justify-center items-start min-h-screen p-8 bg-zinc-900">

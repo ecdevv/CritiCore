@@ -5,18 +5,18 @@ interface AppListCacheEntry {
   expires: number;
 }
 
-const appListCache: Record<string, AppListCacheEntry> = {};
+const appListCache = new Map<string, AppListCacheEntry>();
 
 async function getAppList(): Promise<SteamAppList> {
   const cacheKey = 'steam-applist';
   const now = Date.now() / 1000;
-  const cachedEntry = appListCache[cacheKey];
+  const cachedEntry = appListCache.get(cacheKey);
 
   if (cachedEntry && cachedEntry.expires > now) return cachedEntry.applist;
 
   try {
-    // Cache empty entry for 1 hour first before fetching applist data and cache empty entry for 1 hour
-    appListCache[cacheKey] = { applist: [], expires: now + 300 };
+    // Cache empty entry for 1 minute first before fetching applist data and cache empty entry for 1 hour
+    appListCache.set(cacheKey, { applist: [], expires: now + 60 });
     const response = await fetch(`${process.env.STEAM_API_APPLIST}`);
     if (!response.ok) throw new Error(`Failed to fetch applist data, status code: ${response.status}`);
     const data = await response.json();
@@ -26,7 +26,7 @@ async function getAppList(): Promise<SteamAppList> {
     const applist = data.applist.apps;
 
     // Update cache entry and return this entry
-    appListCache[cacheKey] = { applist, expires: now + 3600 };
+    appListCache.set(cacheKey, { applist, expires: now + 3600 });
     return applist;
   } catch (error) {
     console.log('STEAM: Error retrieving applist');
