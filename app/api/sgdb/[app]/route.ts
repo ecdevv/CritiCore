@@ -1,5 +1,5 @@
 import SGDB, { SGDBGame } from "steamgriddb";
-import { getCacheSize } from "@/app/utility/data";
+import { setCache, setCacheEmpty } from "@/app/utility/cache";
 import { normalizeString } from "@/app/utility/strings";
 
 interface ExtendedSGDBGame extends SGDBGame {
@@ -16,26 +16,26 @@ async function getSGDBImage(name: string) {
 
   try {
     // Cache empty entry for 5 minutes before fetching SGDB grids
-    if (getCacheSize(cache) >= MAX_CACHE_SIZE) {
-      const firstKey = cache.keys().next().value;
-      cache.delete(firstKey);
-    }
-    cache.set(cacheKey, undefined);
-    setTimeout(() => cache.delete(cacheKey), REVALIDATION_TIME);
+    setCacheEmpty(cacheKey, undefined, cache, REVALIDATION_TIME, MAX_CACHE_SIZE);
 
     // Fetching SGDB grids for app ID based on name (the results have to have a release date to count as a game);
     // Find the first (best) static grid/capsule image
     const client = new SGDB(`${process.env.SGDB_API_KEY}`);
     const searchData = await client.searchGame(name) as ExtendedSGDBGame[];
     const appid = searchData.find((data) => data.release_date !== undefined)?.id as number;
-    if(!appid) throw new Error('No appid found for game');
+    if(!appid) {
+      console.log(`SGDB: No appid found for game: ${name}`);
+      return;
+    }
     const grids = await client.getGrids({ type: 'game', id: appid, types: ['static'], styles: ['alternate'], dimensions: ['600x900'], nsfw: 'false' });
-    if(!grids[0]) throw new Error('No grids returned for appid');
+    if(!grids[0]) {
+      console.log(`SGDB: No grids returned for app: ${name}`);
+      return;
+    }
     const capsuleImage = grids[0].url.toString();
 
     // Update cache entry and return this entry;
-    cache.set(cacheKey, capsuleImage);
-    setTimeout(() => cache.delete(cacheKey), REVALIDATION_TIME);
+    setCache(cacheKey, capsuleImage, cache, REVALIDATION_TIME, MAX_CACHE_SIZE);
     return capsuleImage;
   } catch (error) {
     console.log(`SGDB: Error retrieving SGDB grids data for app: ${name}`);
@@ -72,7 +72,10 @@ export async function GET(request: Request) {
     // Fetch the image from SGDB
     const name = normalizeString(identifier);
     const capsuleImage = await getSGDBImage(name);
-    if (!capsuleImage) throw new Error('CACHED - No image returned from SGDB');
+    if (!capsuleImage) {
+      console.log(`SGDB: No image returned for game: ${name}`);
+      return Response.json({ status: 400, capsuleImage: undefined });
+    }
 
     return Response.json({ status: 200, capsuleImage });
   } catch (error) {

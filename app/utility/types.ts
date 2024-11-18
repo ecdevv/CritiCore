@@ -1,19 +1,20 @@
 export type CardCategories = {
   category: string;
-  steamid: number;
+  ocid?: number;
+  steamid?: number;
   name: string;
   releaseDate: string; 
   developer: string;
   capsuleImage: { og: string; blur: string | undefined }
 }
 
-export type SteamCategories = {
+export type GameCategories = {
   category: string;
   id: number;
   name: string;
   releaseDate: string;
   developer: string;
-  ageRating: number;
+  ageRating?: number;
   capsuleImage: string | undefined
 }
 

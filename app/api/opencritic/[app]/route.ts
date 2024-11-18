@@ -1,9 +1,14 @@
-import { getCacheSize } from '@/app/utility/data';
+import { setCache, setCacheEmpty } from '@/app/utility/cache';
 import { normalizeString } from '@/app/utility/strings';
 
 const MAX_ID_CACHE_SIZE = 50 * 1024 * 1024;       // 50MB
 const ID_REVALIDATION_TIME = 24 * 60 * 60 * 1000;  // 24 hours
 const appIDCache = new Map();
+
+const mockData = { id: undefined, name: undefined, releaseDate: undefined, developer: undefined, publisher: undefined,
+  hasLootBoxes: true, percentRec: 91, criticScore: 88, userScore: -1, totalCriticReviews: 84, totalUserReviews: -1, totalTopCriticReviews: -1,
+  tier: { name: 'Mighty', url: 'https://' + process.env.OPENCRITIC_IMG_HOST + '/mighty-man/' + 'mighty' + '-man.png'}, url: 'https://opencritic.com/', capsuleImage: undefined
+};
 
 async function getAppIDByName(name: string) {
   const cacheKey = normalizeString(name);
@@ -11,12 +16,7 @@ async function getAppIDByName(name: string) {
 
   try {
     // Cache empty entry for 24 hours before fetching (checks if the cache is full)
-    if (getCacheSize(appIDCache) >= MAX_ID_CACHE_SIZE) {
-      const firstKey = appIDCache.keys().next().value as string;
-      appIDCache.delete(firstKey);
-    }
-    appIDCache.set(cacheKey, []);
-    setTimeout(() => appIDCache.delete(cacheKey), ID_REVALIDATION_TIME);
+    setCacheEmpty(cacheKey, null, appIDCache, ID_REVALIDATION_TIME, MAX_ID_CACHE_SIZE);
 
     // Fetching search data for app ID(s) based on the game name from params in url
     const url = `${process.env.OPENCRITIC_API_SEARCH}?${new URLSearchParams({ criteria: cacheKey })}`;
@@ -38,8 +38,7 @@ async function getAppIDByName(name: string) {
     if (!appid) throw new Error('Invalid App ID, status code: 404');
 
     // Update cache entry and return this entry
-    appIDCache.set(cacheKey, appid);
-    setTimeout(() => appIDCache.delete(cacheKey), ID_REVALIDATION_TIME);
+    setCache(cacheKey, appid, appIDCache, ID_REVALIDATION_TIME, MAX_ID_CACHE_SIZE);
     return appid;
   } catch (error) {
     console.log(`OPENCRITIC: Error retrieving app id for game name: ${cacheKey}`);
@@ -57,12 +56,7 @@ async function getAppData(appid: number) {
 
   try {
     // Cache empty entry for 24 hours before fetching (checks if the cache is full)
-    if (getCacheSize(appDataCache) >= MAX_DATA_CACHE_SIZE) {
-      const firstKey = appDataCache.keys().next().value as string;
-      appDataCache.delete(firstKey);
-    }
-    appDataCache.set(cacheKey, {});
-    setTimeout(() => appDataCache.delete(cacheKey), DATA_REVALIDATION_TIME);
+    setCache(cacheKey, {}, appDataCache, DATA_REVALIDATION_TIME, MAX_DATA_CACHE_SIZE);
 
     // Fetching game data for app ID(s)
     const url = `${process.env.OPENCRITIC_API_GAME}/${appid}`;
@@ -122,13 +116,8 @@ async function getAppData(appid: number) {
 
     // Cache the appIDCache for the normalized name to skip appIDByName calls since normalized names are === page's game name
     const normalizedAppName = normalizeString(name);
-    if (normalizedAppName) {
-      appIDCache.set(normalizedAppName, id);
-      setTimeout(() => appIDCache.delete(normalizedAppName), ID_REVALIDATION_TIME);
-    }
-
-    appDataCache.set(`app-${id}`, newEntry);
-    setTimeout(() => appDataCache.delete(`app-${id}`), DATA_REVALIDATION_TIME);
+    setCache(normalizedAppName, id, appIDCache, ID_REVALIDATION_TIME, MAX_ID_CACHE_SIZE);
+    setCache(`app-${id}`, newEntry, appDataCache, DATA_REVALIDATION_TIME, MAX_DATA_CACHE_SIZE);
     return newEntry;
   } catch (error) {
     console.log(`OPENCRITIC: Error retrieving app data for app ID: ${appid}`);
@@ -143,9 +132,10 @@ export async function GET(request: Request) {
 
   try {
     // If the identifier is a number, skip the search for app ID
-    const appid = isNaN(Number(identifier)) ? (await getAppIDByName(identifier)) : Number(identifier);
-    if (!appid) throw new Error('CACHED - Invalid App ID, status code: 404');
-    const data = await getAppData(appid as number);
+    // const appid = isNaN(Number(identifier)) ? (await getAppIDByName(identifier)) : Number(identifier);
+    // if (!appid) throw new Error('CACHED - Invalid App ID, status code: 404');
+    // const data = await getAppData(appid as number);
+    const data = mockData;
 
     return Response.json({ status: 200, ...data });
   } catch (error) {

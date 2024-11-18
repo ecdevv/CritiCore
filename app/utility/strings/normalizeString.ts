@@ -4,20 +4,31 @@
  * @param str - The string to normalize.
  * @returns The normalized string.
  */
+
 export default function normalizeString(str: string, dashForSpace = false, search = false): string {
   if (!str) return '';
-  return str
+
+  // Build a single regex for most replacements
+  let normalized = str
     .toLowerCase()  // Lowercase for case insensitivity
-    .replace(/[\u00A9\u2122\u00AE\u2013\u2014\u2020\u2021]/g, '')  // Remove , , , and other symbols
+    .replace(/[\u00A9\u2122\u00AE\u2013\u2014\u2020\u2021]/g, '')  // Remove symbols
     .replace(/\//g, ' ')  // Normalize forward slashes to spaces
     .replace(/[^\w\s-]/g, '')  // Remove any non-word characters, except for spaces and hyphens
-    .replace(search ? '' : /\b(ultimate|definitive|enhanced|complete|goty|game of the year|limited|deluxe|collector\'s)\s+edition(?:\s+upgrade)?\b/gi, '')  // Remove phrases like "the ultimate edition" only if not search
-    .replace(search ? '' : /\b(gold|vault|free|standard|anniversary)\s+edition(?:\s+upgrade)?\b/gi, '')  // Remove phrases like "the gold edition" only if not search
-    .replace(search ? '' : /\b(pc|windows|mac|linux)\s+edition(?:\s+upgrade)?\b/gi, '')  // Remove phrases like "the pc edition" only if not search
-    .replace(search ? '' : /\b(campaign|game of the year|goty)\b/gi, '')  // Remove other common suffixes only if not search
-    .replace(/[\s\-]+/g, dashForSpace ? '-' : ' ') // Normalize spaces and hyphens to a single space or hyphen
-    .replace(/(^-+|-+$)/g, '') // Remove leading/trailing -
     .trim();  // Remove leading/trailing spaces
+
+  // Remove specific phrases if `search` is false
+  if (!search) {
+    normalized = normalized.replace(/\b(ultimate|definitive|enhanced|complete|goty|game of the year|limited|deluxe|collector\'s)\s+edition(?:\s+upgrade)?\b/gi, '')
+    .replace(/\b(gold|vault|free|standard|anniversary)\s+edition(?:\s+upgrade)?\b/gi, '')
+    .replace(/\b(pc|windows|mac|linux)\s+edition(?:\s+upgrade)?\b/gi, '')
+    .replace(/\b(campaign|game of the year|goty)\b/gi, '');
+  }
+
+  // Normalize spaces and hyphens to a single space or hyphen, after search replacements
+  normalized = normalized.replace(/[\s\-]+/g, dashForSpace ? '-' : ' ')  // Normalize spaces and hyphens
+  .replace(/(^-+|-+$)/g, '').trim();  // Remove leading/trailing '-' and spaces
+  
+  return normalized;
 };
 
 /** UNUSED ATM

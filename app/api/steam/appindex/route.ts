@@ -1,8 +1,11 @@
+import { setCache } from "@/app/utility/cache";
+import { normalizeString } from "@/app/utility/strings";
+
 const REVALIDATION_TIME = 2 * 60 * 60 * 1000; // Cache for 2 hours
 const cache = new Map();
 
-async function getAppList() {
-  if (cache.has('applist')) return cache.get('applist');
+async function getAppIndex() {
+  if (cache.has('appIndex')) return cache.get('appIndex');
 
   try { 
     // Setup variables for the data
@@ -28,10 +31,15 @@ async function getAppList() {
     
     // Update cache entry and return this entry
     applist = applist.flat();
-    cache.set('applist', applist);
-    setTimeout(() => cache.delete('applist'), REVALIDATION_TIME);
 
-    return applist;
+    // Create an index of app names to app IDs
+    const appIndex = applist.reduce((index, app) => {
+      index[normalizeString(app.name)] = app.appid;
+      return index;
+    }, {});
+
+    setCache('appIndex', appIndex, cache, REVALIDATION_TIME);
+    return appIndex;
   } catch (error) {
     console.log('STEAM: Error retrieving applist');
     throw error;
@@ -40,8 +48,8 @@ async function getAppList() {
 
 export async function GET(_request: Request) {
   try {
-    const applist = await getAppList();
-    return Response.json({ status: 200, applist });
+    const appIndex = await getAppIndex();
+    return Response.json({ status: 200, appIndex });
   } catch (error) {
     console.log('STEAM:', error);
     return Response.json({ error: 'STEAM: Internal Server Error' }, { status: 500 });

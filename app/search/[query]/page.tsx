@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import CardGrid from "@/app/components/grid/CardGrid";
 import { getBlurDataURL }from "@/app/utility/data";
 import { normalizeString } from "@/app/utility/strings";
-import { CardCategories, SteamCategories } from "@/app/utility/types";
+import { CardCategories, GameCategories } from "@/app/utility/types";
 import { PLACEHOLDER_200X300 } from "@/app/utility/constants";
 
 
@@ -27,7 +27,7 @@ export default async function SearchPage({ params }: SearchProps) {
     if (searchResults?.length) {
       // Fetch data for search results using searchResults ids; if there are multiple ids, appDatas array will be returned, otherwise appData object.
       const resultsDataResponse = await fetch(`${baseUrl}/api/steam/${searchResults.map((game: { appid: number }) => game.appid).join(',')}`);
-      if (!resultsDataResponse.ok) throw new Error('Failed to fetch results data');
+      if (!resultsDataResponse.ok) console.log('Failed to fetch results data');
       const { appDatas = [], appData = [] } = await resultsDataResponse.json();
       const resultsData = [...appDatas, appData].flat();
       
@@ -35,8 +35,8 @@ export default async function SearchPage({ params }: SearchProps) {
       if (resultsData.length) {
         categoryData = await Promise.all(
           resultsData
-            .filter((game: SteamCategories) => game.id)
-            .map(async (game: SteamCategories) => {
+            .filter((game: GameCategories) => game.id)
+            .map(async (game: GameCategories) => {
               const cachedData = game.capsuleImage || (await fetch(`${baseUrl}/api/sgdb/${normalizeString(game.name, true)}`).then(res => res.json())).capsuleImage;
               const og = cachedData || undefined;
               const blur = og ? await getBlurDataURL(og) : undefined;

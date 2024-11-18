@@ -1,36 +1,52 @@
-import { getCacheSize } from "@/app/utility/data";
+import { setCache, setCacheEmpty } from "@/app/utility/cache";
 import { formatDate } from "@/app/utility/dates";
 import { normalizeString } from "@/app/utility/strings";
+
+const appIndexCache = new Map();
+
+// Caching appindex temporarily to reduce number of fetches to our route if we are fetching searching in quick succession;
+async function fetchAppIndex(baseUrl: string) {
+  const cacheKey = 'appIndex';
+  if (appIndexCache.has(cacheKey)) return appIndexCache.get(cacheKey);
+
+  // Fetching search data for app ID(s) based on the game name from params in url
+  const appIndexData = await fetch(`${baseUrl}/api/steam/appindex`).then(res => res.json());
+  const appIndex = appIndexData.appIndex;
+  setCache(cacheKey, appIndex, appIndexCache, 1 * 10 * 60 * 1000);
+  return appIndex;
+}
 
 const MAX_ID_CACHE_SIZE = 50 * 1024 * 1024;       // 50MB
 const ID_REVALIDATION_TIME = 1 * 10 * 60 * 1000;  // 10 minutes
 const appIDCache = new Map();
+
+async function searchAppIndex(appIndex: { [key: string]: number }, cacheKey: string) {
+  if (appIDCache.has(cacheKey)) return appIDCache.get(cacheKey);
+
+  try {
+    // Cache empty entry for 5 minutes before fetching (checks if the cache is full)
+    setCacheEmpty(cacheKey, null, appIDCache, 300 * 1000, MAX_ID_CACHE_SIZE);
+
+    // Find the appid based on the game name from the appIndex.
+    const appid = appIndex[cacheKey] || null;
+
+    // Update cache entry and return this entry
+    setCache(cacheKey, appid, appIDCache, ID_REVALIDATION_TIME, MAX_ID_CACHE_SIZE);
+    return appid;
+  } catch {
+    return null;
+  }
+};
 
 async function getAppIDByName(baseUrl: string, name: string) {
   const cacheKey = normalizeString(name);
   if (appIDCache.has(cacheKey)) return appIDCache.get(cacheKey);
 
   try {
-    // Cache empty entry for 5 minutes before fetching (checks if the cache is full)
-    if (getCacheSize(appIDCache) >= MAX_ID_CACHE_SIZE) {
-      const firstKey = appIDCache.keys().next().value as string;
-      appIDCache.delete(firstKey);
-    }
-    appIDCache.set(cacheKey, []);
-    setTimeout(() => appIDCache.delete(cacheKey), 300 * 1000);  // 5 minutes
-
-    // Fetching search data for app ID(s) based on the game name from params in url
-    const appListResponse = await fetch(`${baseUrl}/api/steam/applist`);
-    if (!appListResponse.ok) throw new Error(`Failed to fetch app list data, status code: ${appListResponse.status}`);
-    const appListData = await appListResponse.json();
-    const appList = appListData.applist;
-    const matchingApps = appList.filter((app: { appid: number; name: string }) => normalizeString(app.name) === cacheKey).map((app: { appid: number; name: string })=> app.appid);
-    if (!matchingApps.length) throw new Error('No matching app(s) found, status code: 404');
-
-    // Update cache entry and return this entry
-    appIDCache.set(cacheKey, matchingApps);
-    setTimeout(() => appIDCache.delete(cacheKey), ID_REVALIDATION_TIME);
-    return matchingApps;
+    const appIndex = await fetchAppIndex(baseUrl);
+    const appid = await searchAppIndex(appIndex, cacheKey);
+    if (!appid) throw new Error('No matching app id found, status code: 404');
+    return appid;
   } catch (error) {
     console.log(`STEAM: Error retrieving app id for game name: ${cacheKey}`);
     throw error;
@@ -46,13 +62,9 @@ async function getAppData(appid: number) {
   if (appDataCache.has(cacheKey)) return appDataCache.get(cacheKey);
 
   try {
+    console.log("STEAM: Fetching app data for app id: " + appid);
     // Cache empty entry for 5 minutes before fetching (checks if the cache is full)
-    if (getCacheSize(appDataCache) >= MAX_DATA_CACHE_SIZE) {
-      const firstKey = appDataCache.keys().next().value as string;
-      appDataCache.delete(firstKey);
-    }
-    appDataCache.set(cacheKey, {});
-    setTimeout(() => appDataCache.delete(cacheKey), DATA_REVALIDATION_TIME);
+    setCacheEmpty(cacheKey, {}, appDataCache, DATA_REVALIDATION_TIME, MAX_DATA_CACHE_SIZE);
 
     // Fetching game data based on the app ID
     const allResponses = await Promise.all([
@@ -60,14 +72,11 @@ async function getAppData(appid: number) {
       fetch(`${process.env.STEAM_API_APPREVIEWS}/${appid}?${new URLSearchParams({ json: '1', language: 'all', purchase_type: 'all' })}`, { next: { revalidate: DATA_REVALIDATION_TIME } }),
       fetch(`${process.env.STEAM_API_NUM_PLAYERS}?${new URLSearchParams({ appid: appid.toString(), format: 'json' })}`),
     ]);
+    if (!allResponses.every(response => response.ok)) {
+      const failedResponse = allResponses.find(response => !response.ok);
+      throw new Error(`Failed to fetch app data, status code: ${failedResponse?.status}`);
+    }
     const [detailsResponse, reviewsResponse, playersResponse] = allResponses;
-    if (!allResponses) {
-      throw new Error('Failed to fetch app data, no responses available');
-    }
-    const failedResponse = allResponses.find(response => !response.ok);
-    if (failedResponse) {
-      throw new Error(`Failed to fetch app data, status code: ${failedResponse.status}`);
-    }
     const [detailsData, reviewsData, playersData] = await Promise.all([
       detailsResponse.json(),
       reviewsResponse.json(),
@@ -121,15 +130,10 @@ async function getAppData(appid: number) {
       currentPlayers,
     };
 
-    // Cache the appIDCache for the normalized name to skip appIDByName calls since normalized names are === page's game name
+    // Cache the appIDCache for the normalized name to skip appIDByName calls since normalized names are === page's game name and set the cache for the app based on id
     const normalizedAppName = normalizeString(name);
-    if (normalizedAppName) {
-      appIDCache.set(normalizedAppName, [id] as number[]);
-      setTimeout(() => appIDCache.delete(normalizedAppName), ID_REVALIDATION_TIME);
-    }
-
-    appDataCache.set(`app-${id}`, newEntry);
-    setTimeout(() => appDataCache.delete(`app-${id}`), DATA_REVALIDATION_TIME);
+    setCache(normalizedAppName, id, appIDCache, ID_REVALIDATION_TIME, MAX_ID_CACHE_SIZE);
+    setCache(`app-${id}`, newEntry, appDataCache, DATA_REVALIDATION_TIME, MAX_DATA_CACHE_SIZE);
     return newEntry;
   } catch (error) {
     console.log(`STEAM: Error retrieving app data for app ID: ${appid}`);
@@ -137,7 +141,27 @@ async function getAppData(appid: number) {
   }
 }
 
-async function getMultipleAppData(appids: number[]) {
+async function getAppDatasByName(baseUrl: string, names: string[]) {
+  const appIndex = await fetchAppIndex(baseUrl);  // Get the cached app Index
+  const appDatas = await Promise.all(
+    names.map(async (name) => {
+      try {
+        // Check cache first for the app id and return the data for it if found
+        const appid = await searchAppIndex(appIndex, normalizeString(name));
+        if (!appid) return null;
+        const appData = await getAppData(appid);
+        if (!appData || !appData.id) return null;
+        return appData;
+      } catch {
+        return null;
+      }
+    })
+  ).then(results => results.filter(data => data !== null));
+  
+  return appDatas;
+}
+
+async function getAppDatas(appids: number[]) {
   // Fetch app data for each app ID
   const appDatas = await Promise.all(
     appids.map(async (appid) => {
@@ -174,29 +198,25 @@ export async function GET(request: Request) {
 
     // Check if the game name is a multiple string ids and fetch based on the app IDs
     if (!isNaN(Number(identifiers[0])) && identifiers.length > 1) {
-      const appDatas = await getMultipleAppData(identifiers.map(Number));
+      const appDatas = await getAppDatas(identifiers.map(Number));
+      return Response.json({ status: 200, appDatas });
+    }
+
+    // Check if the game name is a multiple strings and fetch based on the normalized name
+    if (identifiers.length > 1) {
+      const appDatas = await getAppDatasByName(baseUrl, identifiers);
       return Response.json({ status: 200, appDatas });
     }
     
     // Fetch based on the normalized name by getting ids from appIDByName then fetching app data with ids
-    const matchingApps = await getAppIDByName(baseUrl, identifier);
-    if (!matchingApps.length) throw new Error('CACHED - No matching app(s) found, status code: 404');
-    const appData = (
-      await Promise.all(matchingApps.map((appid: number) => getAppData(appid).catch(() => null)))
-    ).filter(data => data !== null);
-    if (!appData.length) throw new Error(`No app data found for matching app(s): [${matchingApps.join(',')}], status code: 404`);
-
-    // If there is only one app data, return it, otherwise return the app with the most reviews
-    if (appData.length === 1) {
-      return Response.json({ status: 200, ...appData[0] });
-    }
-    const appWithMostReviews = appData.reduce((mostReviewsApp, currentApp) =>
-      (currentApp.totalReviews || 0) > (mostReviewsApp.totalReviews || 0) ? currentApp : mostReviewsApp
-    );
+    const appid = await getAppIDByName(baseUrl, identifier);
+    if (!appid) throw new Error('CACHED - No matching app id found, status code: 404');
+    const appData = await getAppData(appid);
+    if (!appData) throw new Error(`No app data found for matching apps for game name: ${identifier}, status code: 404`);
     
-    return Response.json({ status: 200, ...appWithMostReviews });
+    return Response.json({ status: 200, ...appData });
   } catch (error) {
-    console.error('STEAM:', error);
+    console.log('STEAM:', error);
     return Response.json({ error: 'STEAM: Internal Server Error' }, { status: 500 });
   }
 }

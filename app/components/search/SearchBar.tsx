@@ -16,6 +16,7 @@ const SearchBar = () => {
     const normalizedQuery = normalizeString(searchQuery.trim(), true, true);
     const encodedQuery = encodeURI(normalizedQuery);
     router.push( `/search/${encodedQuery}`);
+    setSearchQuery('');
   };
 
   return (

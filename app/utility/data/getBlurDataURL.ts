@@ -1,5 +1,5 @@
 import sharp from "sharp";
-import getCacheSize from "./getCacheSize";
+import getCacheSize from "../cache/getCacheSize";
 
 /**
  * Generates a Base64-encoded blur data URL for an image.
@@ -44,11 +44,11 @@ export default async function getBlurDataURL(imageUrl: string) {
   // Check if the image is already cached and start with empty headers
   const cachedData = cache.get(imageUrl);
   const headers: Record<string, string> = {};
-
-  // If there's cached data and an ETag, add 'If-None-Match' header
-  if (cachedData && cachedData.etag) headers['If-None-Match'] = cachedData.etag;
-
+  if (cachedData && !cachedData.etag) return cachedData.blurDataUrl;
+  
   try {
+    // If there's cached data and an ETag, add 'If-None-Match' header
+    if (cachedData && cachedData.etag) headers['If-None-Match'] = cachedData.etag;
     const response = await fetch(imageUrl, { headers });
 
     // If the response status is 304 (Not Modified), return the cached blurDataUrl
@@ -65,6 +65,13 @@ export default async function getBlurDataURL(imageUrl: string) {
         cache.delete(firstKey);
       }
       cache.set(imageUrl, { blurDataUrl, etag });
+    } else {
+      if (getCacheSize(cache) >= MAX_CACHE_SIZE) {
+        const firstKey = cache.keys().next().value;
+        cache.delete(firstKey);
+      }
+      cache.set(imageUrl, { blurDataUrl });
+      setTimeout(() => cache.delete(imageUrl), 24 * 60 * 60 * 1000);  // 1 day
     }
 
     return blurDataUrl;
