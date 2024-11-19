@@ -31,14 +31,14 @@ export default async function Game({ params, searchParams }: GameProps) {
   try {
     // Fetching API data from OpenCritic, Steam, and SGDB. OpenCritic API is limited to 25 searches per day and 200 requests per day, so usually using dummy data
     const [ocData, steamData] = await Promise.all([
-      fetch(`${baseUrl}/api/opencritic/${name}`).then(res => res.json()),
-      fetch(`${baseUrl}/api/steam/${name}`).then(res => res.json())
+      fetch(`${baseUrl}/api/opencritic/${name}`, { next: { revalidate: 0 } }).then(res => res.json()),
+      fetch(`${baseUrl}/api/steam/${name}`, { next: { revalidate: 300 } }).then(res => res.json())
     ]);
     const responseStatus = ocData.status === 200 || steamData.status === 200 ? 200 : 404;
     const displayName = ocData.name || steamData.name || 'N/A';
     const releaseDate = ocData.releaseDate || steamData.releaseDate || 'N/A';
     const developer = ocData.developer || steamData.developer || 'N/A';
-    const capsuleImage = steamData.capsuleImage || ocData.capsuleImage || (await fetch(`${baseUrl}/api/sgdb/${name}`).then(res => res.json())).capsuleImage;
+    const capsuleImage = steamData.capsuleImage || ocData.capsuleImage || (await fetch(`${baseUrl}/api/sgdb/${name}`, { next: { revalidate: 300 } }).then(res => res.json())).capsuleImage; // 10 minutes
     const capsuleImageBlur = capsuleImage ? await getBlurDataURL(capsuleImage) : undefined;
     const image = capsuleImage ? { og: capsuleImage, blur: capsuleImageBlur } : { og: PLACEHOLDER_450X675, blur: undefined };
     const validScores = ocData.criticScore >= 0 || ocData.userScore >= 0 || steamData.criticScore >= 0 || steamData.userScore >= 0;

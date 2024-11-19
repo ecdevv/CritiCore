@@ -19,40 +19,34 @@ export default async function SearchPage({ params }: SearchProps) {
 
   try {
     // Fetch search results
-    const searchResultsResponse = await fetch(`${baseUrl}/api/steam/search?q=${searchQuery}`);
-    if (!searchResultsResponse.ok) throw new Error('Failed to fetch search results');
+    const searchResultsResponse = await fetch(`${baseUrl}/api/steam/search/?q=${searchQuery}`, { next: { revalidate: 7200 } });  // 2 hours
     const { searchResults } = await searchResultsResponse.json();
 
-    // If search results are found (applicable ids), fetch their data
-    if (searchResults?.length) {
-      // Fetch data for search results using searchResults ids; if there are multiple ids, appDatas array will be returned, otherwise appData object.
-      const resultsDataResponse = await fetch(`${baseUrl}/api/steam/${searchResults.map((game: { appid: number }) => game.appid).join(',')}`);
-      if (!resultsDataResponse.ok) console.log('Failed to fetch results data');
-      const { appDatas = [], appData = [] } = await resultsDataResponse.json();
-      const resultsData = [...appDatas, appData].flat();
-      
-      // If we have the data for the results, setup data for CardGrid with sgdbImages being fetched if steam's image is not available
-      if (resultsData.length) {
-        categoryData = await Promise.all(
-          resultsData
-            .filter((game: GameCategories) => game.id)
-            .map(async (game: GameCategories) => {
-              const cachedData = game.capsuleImage || (await fetch(`${baseUrl}/api/sgdb/${normalizeString(game.name, true)}`).then(res => res.json())).capsuleImage;
-              const og = cachedData || undefined;
-              const blur = og ? await getBlurDataURL(og) : undefined;
-              const image = og ? { og, blur } : { og: PLACEHOLDER_200X300, blur: undefined };
-              return {
-                category: 'Search Results',
-                steamid: game.id,
-                name: game.name,
-                releaseDate: game.releaseDate,
-                developer: game.developer,
-                capsuleImage: image,
-              };
-            })
-        );
-        categoryData.sort((a, b) => new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime());
-      }
+    // If we have the data for the results, setup data for CardGrid with sgdbImages being fetched if steam's image is not available
+    if (searchResults.length) {
+      categoryData = await Promise.all(
+        searchResults
+          .filter((game: GameCategories) => game.id)
+          .map(async (game: GameCategories) => {
+            const cachedData = game.capsuleImage || (await fetch(`${baseUrl}/api/sgdb/${normalizeString(game.name, true)}`, { next: { revalidate: 7200 } }).then(res => res.json())).capsuleImage; // 10 minutes
+            const og = cachedData || undefined;
+            const blur = og ? await getBlurDataURL(og) : undefined;
+            const image = og ? { og, blur } : { og: PLACEHOLDER_200X300, blur: undefined };
+            return {
+              category: 'Search Results',
+              steamid: game.id,
+              name: game.name,
+              releaseDate: game.releaseDate,
+              developer: game.developer,
+              capsuleImage: image,
+            };
+          })
+      );
+      categoryData.sort((a, b) => {
+        const dateA = a.releaseDate === 'To be announced' ? new Date().getTime() : new Date(a.releaseDate).getTime();
+        const dateB = b.releaseDate === 'To be announced' ? new Date().getTime() : new Date(b.releaseDate).getTime();
+        return dateB - dateA;
+      });
     }
 
     return (

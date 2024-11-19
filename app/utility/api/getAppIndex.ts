@@ -4,10 +4,11 @@ import { normalizeString } from "@/app/utility/strings";
 const REVALIDATION_TIME = 2 * 60 * 60 * 1000; // Cache for 2 hours
 const cache = new Map();
 
-async function getAppIndex() {
+export default async function getAppIndex() {
   if (cache.has('appIndex')) return cache.get('appIndex');
 
-  try { 
+  try {
+    console.log("Fetching app index...");
     // Setup variables for the data
     const key = process.env.STEAM_API_KEY || '';
     let applist = [];
@@ -43,15 +44,5 @@ async function getAppIndex() {
   } catch (error) {
     console.log('STEAM: Error retrieving applist');
     throw error;
-  }
-}
-
-export async function GET(_request: Request) {
-  try {
-    const appIndex = await getAppIndex();
-    return Response.json({ status: 200, appIndex });
-  } catch (error) {
-    console.log('STEAM:', error);
-    return Response.json({ error: 'STEAM: Internal Server Error' }, { status: 500 });
   }
 }

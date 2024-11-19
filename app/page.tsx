@@ -13,13 +13,13 @@ export default async function Home() {
     // Initializing CardGrids and fetch popular games and HoF games from OpenCritic
     let cardGridOne: CardCategories[] = [];
     let cardGridTwo: CardCategories[] = [];
-    const ocData = await fetch(`${baseUrl}/api/opencritic/charts`).then(res => res.json());
+    const ocData = await fetch(`${baseUrl}/api/opencritic/charts`, { next: { revalidate: 7200 } }).then(res => res.json()); // 2 hours
 
     // Fetch the data for popular and HoF games from Steam and merge it with the data from OpenCritic
     if (ocData.status === 200) {
       const [ steamPopDataResponse, steamHofDataResponse ] = await Promise.all([
-        fetch(`${baseUrl}/api/steam/${ocData.popular.map((game: { name: string }) => normalizeString(game.name, true)).join(',')}`),
-        fetch(`${baseUrl}/api/steam/${ocData.hof.map((game: { name: string }) => normalizeString(game.name, true)).join(',')}`)
+        fetch(`${baseUrl}/api/steam/${ocData.popular.map((game: { name: string }) => normalizeString(game.name, true)).join(',')}`, { next: { revalidate: 300 } }),
+        fetch(`${baseUrl}/api/steam/${ocData.hof.map((game: { name: string }) => normalizeString(game.name, true)).join(',')}`, { next: { revalidate: 300 } })
       ])
       const [ steamPopData, steamHofData ] = await Promise.all([ 
         steamPopDataResponse.json().then(data => data.appDatas),
@@ -37,7 +37,7 @@ export default async function Home() {
             const name = ocGame.name || steamGame?.name || 'N/A';
             const releaseDate = ocGame.releaseDate || steamGame?.releaseDate || 'N/A';
             const developer = ocGame.developer || steamGame?.developer || 'N/A';
-            const capsuleImage = steamGame?.capsuleImage || ocGame.capsuleImage || (await fetch(`${baseUrl}/api/sgdb/${normalizeString(ocGame.name, true)}`).then(res => res.json())).capsuleImage;
+            const capsuleImage = steamGame?.capsuleImage || ocGame.capsuleImage || (await fetch(`${baseUrl}/api/sgdb/${normalizeString(ocGame.name, true)}`, { next: { revalidate: 600 } }).then(res => res.json())).capsuleImage;
             const og = capsuleImage || undefined;
             const blur = og ? await getBlurDataURL(og) : undefined;
             const image = og ? { og, blur } : { og: PLACEHOLDER_200X300, blur: undefined };
@@ -60,10 +60,10 @@ export default async function Home() {
     
     // Fetch the charts data for top releases and most played list, then the data for top releases and most played games (all for Steam)
     if (ocData.status !== 200) {
-      const { topReleases, mostPlayed } = await fetch(`${baseUrl}/api/steam/charts`).then(res => res.json());
+      const { topReleases, mostPlayed } = await fetch(`${baseUrl}/api/steam/charts`, { next: { revalidate: 7200 } }).then(res => res.json()); // 2 hours
       const [topReleasesResponse, mostPlayedResponse] = await Promise.all([
-        fetch(`${baseUrl}/api/steam/${topReleases[0].appids.slice(0, 10).join(',')}`),
-        fetch(`${baseUrl}/api/steam/${mostPlayed.slice(0, 10).map((game: { appid: number }) => game.appid).join(',')}`)
+        fetch(`${baseUrl}/api/steam/${topReleases[0].appids.slice(0, 10).join(',')}`, { next: { revalidate: 300 } }),
+        fetch(`${baseUrl}/api/steam/${mostPlayed.slice(0, 10).map((game: { appid: number }) => game.appid).join(',')}`, { next: { revalidate: 300 } })
       ]);
       const [topReleasesData, mostPlayedData] = await Promise.all([
         topReleasesResponse.json().then(data => data.appDatas),
@@ -76,7 +76,7 @@ export default async function Home() {
       const setupGrid = async (data: GameCategories[]) => {
         return Promise.all(
           data.map(async (game: GameCategories) => {
-            const og = game.capsuleImage || (await fetch(`${baseUrl}/api/sgdb/${normalizeString(game.name, true)}`).then(res => res.json())).capsuleImage || undefined;
+            const og = game.capsuleImage || (await fetch(`${baseUrl}/api/sgdb/${normalizeString(game.name, true)}`, { next: { revalidate: 7200 } }).then(res => res.json())).capsuleImage || undefined;
             const blur = og ? await getBlurDataURL(og) : undefined;
             const image = og ? { og, blur } : { og: PLACEHOLDER_200X300, blur: undefined };
             return {
