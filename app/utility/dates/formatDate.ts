@@ -58,6 +58,6 @@ export default function formatDate(dateStr: string): string {
       return `${parsedMonth} ${parsedDay}, ${parsedYear}`;
     }
   } else {
-    return 'Invalid Date';
+    return dateStr;
   }
 }

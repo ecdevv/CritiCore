@@ -37,7 +37,7 @@ export default async function Home() {
             const name = ocGame.name || steamGame?.name || 'N/A';
             const releaseDate = ocGame.releaseDate || steamGame?.releaseDate || 'N/A';
             const developer = ocGame.developer || steamGame?.developer || 'N/A';
-            const capsuleImage = steamGame?.capsuleImage || ocGame.capsuleImage || (await fetch(`${baseUrl}/api/sgdb/${normalizeString(ocGame.name, true)}`, { next: { revalidate: 600 } }).then(res => res.json())).capsuleImage;
+            const capsuleImage = steamGame?.capsuleImage || ocGame.capsuleImage || (await fetch(`${baseUrl}/api/sgdb/${normalizeString(ocGame.name, true)}`, { next: { revalidate: 7200 } }).then(res => res.json())).capsuleImage;
             const og = capsuleImage || undefined;
             const blur = og ? await getBlurDataURL(og) : undefined;
             const image = og ? { og, blur } : { og: PLACEHOLDER_200X300, blur: undefined };

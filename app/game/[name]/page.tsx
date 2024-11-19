@@ -5,6 +5,7 @@ import ScoreBox from "@/app/components/score/ScoreBox";
 import OCDataCard from "./OCDataCard";
 import SteamDataCard from "./SteamDataCard";
 import { getBlurDataURL } from "@/app/utility/data";
+import { capitalizeFirstLetter } from "@/app/utility/strings";
 import { PLACEHOLDER_450X675 } from "@/app/utility/constants";
 
 type ReviewType = "all" | "critic" | "user" ;
@@ -31,17 +32,16 @@ export default async function Game({ params, searchParams }: GameProps) {
   try {
     // Fetching API data from OpenCritic, Steam, and SGDB. OpenCritic API is limited to 25 searches per day and 200 requests per day, so usually using dummy data
     const [ocData, steamData] = await Promise.all([
-      fetch(`${baseUrl}/api/opencritic/${name}`, { next: { revalidate: 0 } }).then(res => res.json()),
+      fetch(`${baseUrl}/api/opencritic/${name}`, { next: { revalidate: 300 } }).then(res => res.json()),
       fetch(`${baseUrl}/api/steam/${name}`, { next: { revalidate: 300 } }).then(res => res.json())
     ]);
     const responseStatus = ocData.status === 200 || steamData.status === 200 ? 200 : 404;
     const displayName = ocData.name || steamData.name || 'N/A';
     const releaseDate = ocData.releaseDate || steamData.releaseDate || 'N/A';
     const developer = ocData.developer || steamData.developer || 'N/A';
-    const capsuleImage = steamData.capsuleImage || ocData.capsuleImage || (await fetch(`${baseUrl}/api/sgdb/${name}`, { next: { revalidate: 300 } }).then(res => res.json())).capsuleImage; // 10 minutes
+    const capsuleImage = steamData.capsuleImage || ocData.capsuleImage || (await fetch(`${baseUrl}/api/sgdb/${name}`, { next: { revalidate: 7200 } }).then(res => res.json())).capsuleImage;  // 2 hours
     const capsuleImageBlur = capsuleImage ? await getBlurDataURL(capsuleImage) : undefined;
     const image = capsuleImage ? { og: capsuleImage, blur: capsuleImageBlur } : { og: PLACEHOLDER_450X675, blur: undefined };
-    const validScores = ocData.criticScore >= 0 || ocData.userScore >= 0 || steamData.criticScore >= 0 || steamData.userScore >= 0;
 
     const scores = {
       opencritic: { critic: ocData.criticScore, user: ocData.userScore },
@@ -49,24 +49,25 @@ export default async function Game({ params, searchParams }: GameProps) {
     };
 
     // Calculating aggregate score
-    const calculateAggregateScore = (scores: Scores): { critic: number; user: number; overall: number } => {
+    const calculateAggregateScore = (scores: Scores): { critic: number | null; user: number | null; overall: number | null } => {
       // Filter out scores that are not available;
-      const validCriticScores = Object.entries(scores).filter(([, { critic }]) => critic >= 0);
-      const validUserScores = Object.entries(scores).filter(([, { user }]) => user >= 0);
-      const allValidScores = Object.entries(scores).flatMap(([, { critic, user }]) => [critic, user].filter(score => score >= 0));
+      const validCriticScores = Object.entries(scores).filter(([, { critic }]) => critic && critic >= 0);
+      const validUserScores = Object.entries(scores).filter(([, { user }]) => user && user >= 0);
+      const allValidScores = Object.entries(scores).flatMap(([, { critic, user }]) => [critic, user].filter(score => score && score >= 0));
       
       const criticAverage = validCriticScores.length > 0
         ? Math.round(validCriticScores.reduce((sum, [, { critic }]) => sum + critic, 0) / validCriticScores.length)
-        : -1;
+        : null;
       const userAverage = validUserScores.length > 0
         ? Math.round(validUserScores.reduce((sum, [, { user }]) => sum + user, 0) / validUserScores.length)
-        : -1;
+        : null;
       const overallAverage = allValidScores.length > 0
         ? Math.round(allValidScores.reduce((sum, score) => sum + score, 0) / allValidScores.length)
-        : -1;
+        : null;
 
       return { critic: criticAverage, user: userAverage, overall: overallAverage };
     };
+
 
     const currentScores = reviewType === "all"
       ? {
@@ -88,7 +89,7 @@ export default async function Game({ params, searchParams }: GameProps) {
 
     return (
       <div className='flex justify-center items-center min-h-screen p-8 bg-zinc-900'>
-        {(responseStatus === 200 && validScores) ? (
+        {(responseStatus === 200) ? (
           <>
             <section className="flex justify-center items-center p-8 gap-12">
               <Link href={image.og || ''} target="_blank" rel="noopener noreferrer" >
@@ -106,7 +107,10 @@ export default async function Game({ params, searchParams }: GameProps) {
               {(displayType === 'none') && (
                 <div className="w-[725px] flex flex-col justify-center items-center p-8 gap-5">
                   <h1 className="text-4xl font-bold text-white text-center tracking-wide">{displayName}</h1>
-                  <p className='text-white tracking-wide'>Released on <strong>{releaseDate}</strong> by <strong>{developer}</strong></p>
+                  { isNaN(new Date(releaseDate).getTime())
+                    ? <p className='text-white tracking-wide'><strong>{capitalizeFirstLetter(releaseDate) || 'Invalid Date'}</strong> by <strong>{developer}</strong></p>
+                    : <p className='text-white tracking-wide'>Released on <strong>{releaseDate}</strong> by <strong>{developer}</strong></p>
+                  }
                   <Link
                     href={`?${new URLSearchParams({ type: ["all", "critic", "user"][(["all", "critic", "user"].indexOf(reviewType) + 1) % 3] })}`}
                     replace
@@ -120,7 +124,7 @@ export default async function Game({ params, searchParams }: GameProps) {
                     <ScoreBox status={steamData.status} url={`?${new URLSearchParams({ display: 'steam'})}`} score={currentScores.steam}>Steam</ScoreBox>
                   </div>
                   <ScoreBox 
-                    status={-1} 
+                    status={-1}
                     score={currentScores.aggregate} 
                     textXL={true} 
                     className='flex flex-col justify-center items-center w-[145px] aspect-[20/19] p-3 rounded-xl shadow-box-card border-[1px] border-zinc-800 text-center text-white'

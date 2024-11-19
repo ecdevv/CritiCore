@@ -5,7 +5,7 @@ interface ScoreBoxProps {
   status: number
   url?: string
   target?: boolean
-  score: number
+  score: number | null | undefined
   textXL?: boolean
   className?: string
   children?: React.ReactNode
@@ -17,12 +17,12 @@ const ScoreBox = ({ status, url, target = false, score, textXL = false, classNam
       {status !== 200 || !score || score < 0 || !url ? (
         <div className={`${getScoreColorClass(score)} ${className}`}>
           <h2 className={`${textXL ? 'text-xl' : 'text-lg'} font-semibold`}>{children}</h2>
-          <p className={`${textXL ? 'text-6xl' : 'text-5xl'} font-bold`}>{score >= 0 ? score + (children?.toString() === "Steam" ? '%' : '') : 'N/A'}</p>
+          <p className={`${textXL ? 'text-6xl' : 'text-5xl'} font-bold`}>{score && score >= 0 ? score + (children?.toString() === "Steam" ? '%' : '') : 'N/A'}</p>
         </div>
       ) : (
         <Link href={`${url}`} target={target === true ? '_blank' : ''} rel="noopener noreferrer" replace scroll={false} className={`${getScoreColorClass(score, true)} ${className}`}>
           <h2 className={`${textXL ? 'text-xl' : 'text-lg'} font-semibold`}>{children}</h2>
-          <p className={`${textXL ? 'text-6xl' : 'text-5xl'} font-bold`}>{score >= 0 ? score + (children?.toString() === "Steam" ? '%' : '') : 'N/A'}</p>
+          <p className={`${textXL ? 'text-6xl' : 'text-5xl'} font-bold`}>{score && score >= 0 ? score + (children?.toString() === "Steam" ? '%' : '') : 'N/A'}</p>
         </Link>
       )}
     </>

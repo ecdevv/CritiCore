@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio';
 import levenshtein from 'damerau-levenshtein';
+import { redis } from '@/app/utility/redis';
 import { normalizeString } from "@/app/utility/strings";
 
 type Game = {
@@ -132,7 +133,14 @@ async function getSteamStore(searchQuery: string) {
     })
   );
 
+  // Optimizing search results using Levenshtein distance and adding the search results to the Redis cache, then returning
   const levenshteinResults = await optimizedSearch(games, searchQuery);
+  await Promise.all(levenshteinResults.map(async game => {
+    const cacheKey = `steam:${normalizeString(game.name)}`;
+    const cachedData = await redis.get(cacheKey);
+    if (cachedData) return;
+    await redis.set(cacheKey, game.id, 'EX', 24 * 60 * 60); // 24 hours
+  }));
   return levenshteinResults;
 }
 

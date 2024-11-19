@@ -31,6 +31,11 @@ export default function normalizeString(str: string, dashForSpace = false, searc
   return normalized;
 };
 
+export function capitalizeFirstLetter(str: string): string {
+  if (!str) return '';
+  return str.replace(/\b\w/g, char => char.toUpperCase());
+}
+
 /** UNUSED ATM
  * Normalizes a string by converting it to lowercase, removing special characters, capitalizing the first letter of each word, and trimming leading/trailing spaces.
  * Used to make query comparisons closer for OpenCritic for levenshtein distance

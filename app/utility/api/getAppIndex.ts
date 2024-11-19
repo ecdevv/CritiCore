@@ -1,7 +1,8 @@
 import { setCache } from "@/app/utility/cache";
 import { normalizeString } from "@/app/utility/strings";
 
-const REVALIDATION_TIME = 2 * 60 * 60 * 1000; // Cache for 2 hours
+const MAX_CACHE_SIZE = 200 * 1024 * 1024; // 200MB
+const EXPIRY_TIME = 2 * 60 * 60 * 1000; // Cache for 2 hours
 const cache = new Map();
 
 export default async function getAppIndex() {
@@ -19,7 +20,7 @@ export default async function getAppIndex() {
     while (haveMoreResults) {
       const searchParams = new URLSearchParams({ key, include_games: 'true', include_dlc: 'false', include_software: 'false', include_videos: 'false', include_hardware: 'false', max_results: '15000' });
       if (lastAppId) searchParams.append('last_appid', lastAppId.toString());
-      const response = await fetch(`${process.env.STEAM_API_APPLIST_V1}/?${searchParams}`, { next: { revalidate: REVALIDATION_TIME } });
+      const response = await fetch(`${process.env.STEAM_API_APPLIST_V1}/?${searchParams}`, { next: { revalidate: EXPIRY_TIME } });
       if (!response.ok) throw new Error(`Failed to fetch applist data, status code: ${response.status}`);
       const data = await response.json();
       if (!data) throw new Error('Invalid applist data, status code: 404');
@@ -39,7 +40,7 @@ export default async function getAppIndex() {
       return index;
     }, {});
 
-    setCache('appIndex', appIndex, cache, REVALIDATION_TIME);
+    setCache('appIndex', appIndex, cache, EXPIRY_TIME, MAX_CACHE_SIZE);
     return appIndex;
   } catch (error) {
     console.log('STEAM: Error retrieving applist');
