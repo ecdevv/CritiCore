@@ -41,6 +41,7 @@ const MAX_CACHE_SIZE = 100 * 1024 * 1024; // 100MB
 const cache = new Map();
 
 export default async function getBlurDataURL(imageUrl: string) {
+  if (!imageUrl) return null;
   // Check if the image is already cached and start with empty headers
   const cachedData = cache.get(imageUrl);
   const headers: Record<string, string> = {};
@@ -49,7 +50,7 @@ export default async function getBlurDataURL(imageUrl: string) {
   try {
     // If there's cached data and an ETag, add 'If-None-Match' header
     if (cachedData && cachedData.etag) headers['If-None-Match'] = cachedData.etag;
-    const response = await fetch(imageUrl, { headers });
+    const response = await fetch(imageUrl, { headers, next: { revalidate: 7200 } });
 
     // If the response status is 304 (Not Modified), return the cached blurDataUrl
     if (response.status === 304) return cachedData.blurDataUrl;

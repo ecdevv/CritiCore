@@ -1,1 +1,1 @@
-export {default as getAppIndex} from './getAppIndex';
+export {default as getSteamIndex} from './getSteamIndex';

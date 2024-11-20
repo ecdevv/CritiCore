@@ -4,11 +4,11 @@ import { redis } from '@/app/utility/redis';
 import { normalizeString } from "@/app/utility/strings";
 
 type Game = {
-  link: string | undefined;
   id: number;
+  url: string | undefined;
   name: string;
   tags: string[] | undefined;
-  releaseDate: string | undefined;
+  releaseDate: string;
   reviewSummary: string | undefined;
   reviewPercentage: number | undefined;
   posReviewCount: number | undefined;
@@ -18,6 +18,95 @@ type Game = {
   headerImage: string | undefined;
   capsuleImage: string | undefined;
 };
+
+async function getSteamStore(searchQuery: string) {
+  if (!searchQuery || searchQuery.length < 3) return [];
+
+  // Fetching the steam store for the search results, then using cheerio to scrape the data
+  const urlParams = new URLSearchParams({
+    term: searchQuery.replace(/ /g, '+').replace(/-/g, '+'),
+    category1: '998',
+    supportedlang: 'english',
+    ndl: '1',
+  });
+  const response = await fetch(`${process.env.STEAM_STORE_SEARCH}/?${urlParams}`);
+  const html = await response.text();
+  const $ = cheerio.load(html);
+  const tagsList = await fetch(`${process.env.STEAM_API_TAGS}`, { cache: 'force-cache' }).then(res => res.json());
+
+  // Extracting the game data from search results
+  const games: Game[] = [];
+  await Promise.all(
+    $("#search_resultsRows > a").slice(0, 49).map(async (_, element) => {
+      const appid = $(element).attr("data-ds-appid");
+      const url = $(element).attr("href");
+      const name = $(element).find(".title").text().trim();
+      const tagids = JSON.parse($(element).attr("data-ds-tagids") || "[]");
+      const tags = await convertTags(tagsList, tagids);
+      const releaseDate = $(element).find(".col.search_released").text().trim();
+
+      // Extract review summary and percentage
+      const reviewData = $(element)
+          .find(".search_review_summary")
+          .attr("data-tooltip-html");
+      let reviewSummary;
+      let reviewPercentage;
+      let posReviewCount;
+      if (reviewData) {
+        const match = reviewData.match(/^(.*)<br>(\d+)% of the (\d{1,3}(?:,\d{3})*) user reviews/);
+        if (match) {
+          reviewSummary = match[1].trim();                // e.g., "Overwhelmingly Positive"
+          reviewPercentage = parseInt(match[2], 10);      // e.g., 99
+          posReviewCount = match[3].replace(/,/g, '');    // Remove commas if any, e.g., "5,042" becomes "5042"
+          posReviewCount = parseInt(posReviewCount, 10);  // Convert to integer
+        }
+      }
+
+      // Extract price
+      const ogPrice = $(element).find(".discount_original_price").text().trim().replace(/[^\d.]/g, "");
+      const price = $(element).find(".discount_final_price").text().trim().replace(/[^\d.]/g, "");
+      const discount = $(element).find(".discount_pct").text().trim().replace(/-/g, '');
+
+      // Handle images; fetch capsule image to ensure it exists, otherwise return undefined headerImage and capsuleImage
+      const headerImageElement = $(element).find("img").attr("src");
+      const headerImageHost = headerImageElement?.replace(/^https:\/\/[^/]+/, '');
+      const headerImageName = headerImageHost?.replace(/capsule_sm_120/, 'capsule_231x87');
+      const headerImageUrl = 'https://' + process.env.STEAM_IMG_HOST + headerImageName;
+      const headerImageResponse = await fetch(headerImageUrl, { method: 'HEAD', next: { revalidate: 7200 } });
+      const headerImage = headerImageResponse.ok ? headerImageUrl : undefined;
+      const capsuleImageUrl = process.env.STEAM_CDN_CAPSULE + '/' + appid + '/' + 'library_600x900_2x.jpg';
+      const capsuleImageResponse = await fetch(capsuleImageUrl, { method: 'HEAD', next: { revalidate: 7200 } });
+      const capsuleImage = capsuleImageResponse.ok ? capsuleImageUrl : undefined;
+
+      games.push({
+        id: Number(appid),
+        url,
+        name,
+        tags,
+        releaseDate,
+        reviewSummary,
+        reviewPercentage,
+        posReviewCount,
+        ogPrice: Number(ogPrice) ? Number(ogPrice) : Number(price),
+        price: Number(price),
+        discount: discount,
+        headerImage,
+        capsuleImage,
+      });
+    })
+  );
+
+  // Optimizing search results using Levenshtein distance and adding the search results to the Redis cache, then returning
+  const levenshteinResults = await optimizedSearch(games, searchQuery);
+  const results = levenshteinResults.filter(game => game.id);
+  await Promise.all(results.map(async game => {
+    const cacheKey = `steam:${normalizeString(game.name)}`;
+    const cachedData = await redis.get(cacheKey);
+    if (cachedData) return;
+    await redis.set(cacheKey, game.id, 'EX', 24 * 60 * 60); // 24 hours
+  }));
+  return results;
+}
 
 async function convertTags(tagsList: { response: { tags: { name: string; tagid: number }[] } }, tagids: number[]) {
   const tags = tagids.map(tagid => {
@@ -59,89 +148,6 @@ async function optimizedSearch(games: Game[], searchQuery: string) {
   // Convert unique apps Map back to an array and remove the normalizedAppName property
   const finalResults = Array.from(uniqueApps.values()).map(({ normalizedAppName: _, ...game }) => game);
   return finalResults;
-}
-
-async function getSteamStore(searchQuery: string) {
-  if (!searchQuery || searchQuery.length < 3) return [];
-
-  // Fetching the steam store for the search results, then using cheerio to scrape the data
-  const urlParams = new URLSearchParams({
-    term: searchQuery.replace(/ /g, '+').replace(/-/g, '+'),
-    category1: '998',
-    supportedlang: 'english',
-    ndl: '1',
-  });
-  const response = await fetch(`${process.env.STEAM_STORE_SEARCH}/?${urlParams}`);
-  const html = await response.text();
-  const $ = cheerio.load(html);
-  const tagsList = await fetch(`${process.env.STEAM_API_TAGS}`, { next: { revalidate: 86400 } }).then(res => res.json()); // 1 day
-
-  // Extracting the game data from search results
-  const games: Game[] = [];
-  await Promise.all(
-    $("#search_resultsRows > a").map(async (_, element) => {
-      const appid = $(element).attr("data-ds-appid");
-      const link = $(element).attr("href");
-      const name = $(element).find(".title").text().trim();
-      const tagids = JSON.parse($(element).attr("data-ds-tagids") || "[]");
-      const tags = await convertTags(tagsList, tagids);
-      const releaseDate = $(element).find(".col.search_released").text().trim();
-
-      // Extract review summary and percentage
-      const reviewData = $(element)
-          .find(".search_review_summary")
-          .attr("data-tooltip-html");
-      let reviewSummary;
-      let reviewPercentage;
-      let posReviewCount;
-      if (reviewData) {
-        const match = reviewData.match(/^(.*)<br>(\d+)% of the (\d{1,3}(?:,\d{3})*) user reviews/);
-        if (match) {
-          reviewSummary = match[1].trim();                // e.g., "Overwhelmingly Positive"
-          reviewPercentage = parseInt(match[2], 10);      // e.g., 99
-          posReviewCount = match[3].replace(/,/g, '');    // Remove commas if any, e.g., "5,042" becomes "5042"
-          posReviewCount = parseInt(posReviewCount, 10);  // Convert to integer
-        }
-      }
-
-      // Extract price
-      const ogPrice = $(element).find(".discount_original_price").text().trim().replace(/[^\d.]/g, "");
-      const price = $(element).find(".discount_final_price").text().trim().replace(/[^\d.]/g, "");
-      const discount = $(element).find(".discount_pct").text().trim().replace(/-/g, '');
-
-      // Handle images; fetch capsule image to ensure it exists, otherwise return undefined capsuleImage
-      const headerImage = $(element).find("img").attr("src");
-      const capsuleImageUrl = process.env.STEAM_CDN_CAPSULE + '/' + appid + '/' + 'library_600x900_2x.jpg';
-      const capsuleImageResponse = await fetch(capsuleImageUrl, { method: 'HEAD' });
-      const capsuleImage = capsuleImageResponse.ok ? capsuleImageUrl : undefined;
-
-      games.push({
-        id: Number(appid),
-        link,
-        name,
-        tags,
-        releaseDate,
-        reviewSummary,
-        reviewPercentage,
-        posReviewCount,
-        ogPrice: Number(ogPrice) ? Number(ogPrice) : Number(price),
-        price: Number(price),
-        discount: discount,
-        headerImage,
-        capsuleImage,
-      });
-    })
-  );
-
-  // Optimizing search results using Levenshtein distance and adding the search results to the Redis cache, then returning
-  const levenshteinResults = await optimizedSearch(games, searchQuery);
-  await Promise.all(levenshteinResults.map(async game => {
-    const cacheKey = `steam:${normalizeString(game.name)}`;
-    const cachedData = await redis.get(cacheKey);
-    if (cachedData) return;
-    await redis.set(cacheKey, game.id, 'EX', 24 * 60 * 60); // 24 hours
-  }));
-  return levenshteinResults;
 }
 
 export async function GET(request: Request) {

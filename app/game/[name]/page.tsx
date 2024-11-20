@@ -22,7 +22,7 @@ interface GameProps {
 
 export default async function Game({ params, searchParams }: GameProps) {
   const headersList = await headers();
-  const baseUrl = headersList.get('x-base-url') || '';
+  const baseURL = headersList.get('x-base-url') || '';
   const pathname = headersList.get('x-pathname') || '';
   const referer = headersList.get('referer') || '';
   const reviewType = (await searchParams).type as ReviewType || 'all';
@@ -32,17 +32,18 @@ export default async function Game({ params, searchParams }: GameProps) {
   try {
     // Fetching API data from OpenCritic, Steam, and SGDB. OpenCritic API is limited to 25 searches per day and 200 requests per day, so usually using dummy data
     const [ocData, steamData] = await Promise.all([
-      fetch(`${baseUrl}/api/opencritic/${name}`, { next: { revalidate: 300 } }).then(res => res.json()),
-      fetch(`${baseUrl}/api/steam/${name}`, { next: { revalidate: 300 } }).then(res => res.json())
+      fetch(`${baseURL}/api/oc/${name}`, { next: { revalidate: 300 } }).then(res => res.json()),
+      fetch(`${baseURL}/api/steam/${name}`, { next: { revalidate: 300 } }).then(res => res.json())
     ]);
     const responseStatus = ocData.status === 200 || steamData.status === 200 ? 200 : 404;
     const displayName = ocData.name || steamData.name || 'N/A';
     const releaseDate = ocData.releaseDate || steamData.releaseDate || 'N/A';
+    const released = releaseDate !== 'N/A' && new Date(releaseDate) < new Date();
     const developer = ocData.developer || steamData.developer || 'N/A';
-    const capsuleImage = steamData.capsuleImage || ocData.capsuleImage || (await fetch(`${baseUrl}/api/sgdb/${name}`, { next: { revalidate: 7200 } }).then(res => res.json())).capsuleImage;  // 2 hours
+    const capsuleImage = steamData.capsuleImage || ocData.capsuleImage || (await fetch(`${baseURL}/api/sgdb/${name}`, { next: { revalidate: 7200 } }).then(res => res.json())).capsuleImage;  // 2 hours
     const capsuleImageBlur = capsuleImage ? await getBlurDataURL(capsuleImage) : undefined;
     const image = capsuleImage ? { og: capsuleImage, blur: capsuleImageBlur } : { og: PLACEHOLDER_450X675, blur: undefined };
-
+    
     const scores = {
       opencritic: { critic: ocData.criticScore, user: ocData.userScore },
       steam: { critic: steamData.criticScore, user: steamData.userScore },
@@ -107,15 +108,24 @@ export default async function Game({ params, searchParams }: GameProps) {
               {(displayType === 'none') && (
                 <div className="w-[725px] flex flex-col justify-center items-center p-8 gap-5">
                   <h1 className="text-4xl font-bold text-white text-center tracking-wide">{displayName}</h1>
-                  { isNaN(new Date(releaseDate).getTime())
-                    ? <p className='text-white tracking-wide'><strong>{capitalizeFirstLetter(releaseDate) || 'Invalid Date'}</strong> by <strong>{developer}</strong></p>
-                    : <p className='text-white tracking-wide'>Released on <strong>{releaseDate}</strong> by <strong>{developer}</strong></p>
-                  }
+                  { isNaN(new Date(releaseDate).getTime()) ? (
+                    <p className='text-white tracking-wide'>
+                      <strong>{capitalizeFirstLetter(releaseDate) || 'Invalid Date'}</strong> by <strong>{developer}</strong>
+                    </p>
+                  ) : released ? (
+                    <p className='text-white tracking-wide'>
+                      Released on <strong>{releaseDate}</strong> by <strong>{developer}</strong>
+                    </p>
+                  ) : (
+                    <p className='text-white tracking-wide'>
+                      Releasing on <strong>{releaseDate}</strong> by <strong>{developer}</strong>
+                    </p>
+                  )}
                   <Link
                     href={`?${new URLSearchParams({ type: ["all", "critic", "user"][(["all", "critic", "user"].indexOf(reviewType) + 1) % 3] })}`}
                     replace
                     scroll={false}
-                    className="text-center px-4 py-2 text-2xl font-semibold text-white tracking-wide rounded shadow-box-card border-[1px] border-zinc-800 hover:bg-[#151517] transition-all duration-100 ease-in-out"
+                    className="text-center px-4 py-2 text-2xl font-semibold text-white tracking-wide rounded shadow-box-card border-[1px] border-zinc-800 hover:border-zinc-700 hover:bg-[#151517] transition-all duration-100 ease-in-out"
                   >
                     {`${reviewType === "all" ? "All Review" : reviewType === "user" ? "User" : " Critic"} Scores`}
                   </Link>
@@ -137,10 +147,10 @@ export default async function Game({ params, searchParams }: GameProps) {
                 </div>
               )}
               {displayType === 'opencritic' &&
-                <OCDataCard pathname={pathname} referer={referer} data={ocData} name={displayName} releaseDate={releaseDate} developer={developer} currentScore={currentScores.opencritic} />
+                <OCDataCard pathname={pathname} referer={referer} data={ocData} name={displayName} released={released} releaseDate={releaseDate} developer={developer} currentScore={currentScores.opencritic} />
               }
               {displayType === 'steam' &&
-                <SteamDataCard pathname={pathname} referer={referer} data={steamData} name={displayName} releaseDate={releaseDate} developer={developer} currentScore={currentScores.steam} />
+                <SteamDataCard pathname={pathname} referer={referer} data={steamData} name={displayName} released={released} releaseDate={releaseDate} developer={developer} currentScore={currentScores.steam} />
               }
             </section>
           </>

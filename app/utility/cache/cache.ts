@@ -8,7 +8,7 @@ export const setCache = (cacheKey: string, data: unknown, cache: Map<string, unk
     }
   }
   cache.set(cacheKey, data);
-  setTimeout(() => cache.delete(cacheKey), expiry);
+  setTimeout(() => cache.delete(cacheKey), expiry * 1000);
 };
 
 export const setCacheEmpty = (cacheKey: string, data: unknown = null, cache: Map<string, unknown>, expiry: number, maxCacheSize: number = 0 ) => {
@@ -19,5 +19,5 @@ export const setCacheEmpty = (cacheKey: string, data: unknown = null, cache: Map
     }
   }
   cache.set(cacheKey, data);
-  setTimeout(() => cache.delete(cacheKey), expiry);
+  setTimeout(() => cache.delete(cacheKey), expiry * 1000);
 };

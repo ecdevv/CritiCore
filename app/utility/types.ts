@@ -5,17 +5,19 @@ export type CardCategories = {
   name: string;
   releaseDate: string; 
   developer: string;
+  headerImage: { og: string; blur: string | undefined }
   capsuleImage: { og: string; blur: string | undefined }
 }
 
 export type GameCategories = {
-  category: string;
+  category?: string;
   id: number;
   name: string;
   releaseDate: string;
-  developer: string;
+  developer?: string;
   ageRating?: number;
-  capsuleImage: string | undefined
+  headerImage: string | undefined;
+  capsuleImage: string | undefined;
 }
 
 export type OCData = {

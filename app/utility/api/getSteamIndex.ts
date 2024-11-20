@@ -1,11 +1,11 @@
 import { setCache } from "@/app/utility/cache";
 import { normalizeString } from "@/app/utility/strings";
 
-const MAX_CACHE_SIZE = 200 * 1024 * 1024; // 200MB
-const EXPIRY_TIME = 2 * 60 * 60 * 1000; // Cache for 2 hours
+const MAX_CACHE_SIZE = 100 * 1024 * 1024; // 100MB
+const EXPIRY_TIME = 24 * 60 * 60; // Cache for 24 hours
 const cache = new Map();
 
-export default async function getAppIndex() {
+export default async function getSteamIndex() {
   if (cache.has('appIndex')) return cache.get('appIndex');
 
   try {

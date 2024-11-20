@@ -8,7 +8,7 @@ type FeaturedData = {
   tags: string[];
 }
 
-async function getFeaturedData() {
+async function getOCCharts() {
   // Fetching HoF data for app ID based on app ID from params in url
   const options = {
     method: 'GET',
@@ -58,7 +58,7 @@ async function getFeaturedData() {
 
 export async function GET(_request: Request) {
   try {
-    const data = await getFeaturedData();
+    const data = await getOCCharts();
     const { popular, hof } = data ?? {};
     if (!popular || !hof) return Response.json({ error: 'OC: Internal Server Error', status: 500 });
     return Response.json({ status: 200, popular, hof });

@@ -11,6 +11,7 @@ export default function normalizeString(str: string, dashForSpace = false, searc
   // Build a single regex for most replacements
   let normalized = str
     .toLowerCase()  // Lowercase for case insensitivity
+    .normalize('NFD')  // Normalize diacritics
     .replace(/[\u00A9\u2122\u00AE\u2013\u2014\u2020\u2021]/g, '')  // Remove symbols
     .replace(/\//g, ' ')  // Normalize forward slashes to spaces
     .replace(/[^\w\s-]/g, '')  // Remove any non-word characters, except for spaces and hyphens

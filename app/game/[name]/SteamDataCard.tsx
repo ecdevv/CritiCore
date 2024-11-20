@@ -4,6 +4,7 @@ import { SiSteamdb } from 'react-icons/si'
 import { TbArrowBackUp } from 'react-icons/tb'
 import BackButton from '@/app/components/common/BackButton'
 import ScoreBox from '@/app/components/score/ScoreBox'
+import { capitalizeFirstLetter } from '@/app/utility/strings'
 import { getSteamScoreClass } from '@/app/utility/helper'
 import { SteamData } from '@/app/utility/types'
 
@@ -32,12 +33,13 @@ interface SteamDataCardProps {
   referer: string;
   data: SteamData;
   name: string;
+  released: boolean;
   releaseDate: string;
   developer: string;
   currentScore: number;
 }
 
-const SteamDataCard = ({ pathname, referer, data, name, releaseDate, developer, currentScore }: SteamDataCardProps) => {
+const SteamDataCard = ({ pathname, referer, data, name, released, releaseDate, developer, currentScore }: SteamDataCardProps) => {
   const totalReviews = typeof data.totalReviews === 'number' && data.totalReviews >= 0 ? data.totalReviews : 'N/A';
   const totalPositive = typeof data.totalPositive === 'number' && data.totalPositive >= 0 ? data.totalPositive : 'N/A';
   const totalNegative = typeof data.totalNegative === 'number' && data.totalNegative >= 0 ? data.totalNegative : 'N/A';
@@ -56,7 +58,19 @@ const SteamDataCard = ({ pathname, referer, data, name, releaseDate, developer, 
         <TbArrowBackUp size={32} className='group-hover:text-[#2196F3] transition-colors duration-100 ease-in-out'/>
       </BackButton>
       <h1 className="text-4xl font-bold text-white text-center tracking-wide">{name}</h1>
-      <p className='text-white tracking-wide'>Released on <strong>{releaseDate}</strong> by <strong>{developer}</strong></p>
+      { isNaN(new Date(releaseDate).getTime()) ? (
+        <p className='text-white tracking-wide'>
+          <strong>{capitalizeFirstLetter(releaseDate) || 'Invalid Date'}</strong> by <strong>{developer}</strong>
+        </p>
+      ) : released ? (
+        <p className='text-white tracking-wide'>
+          Released on <strong>{releaseDate}</strong> by <strong>{developer}</strong>
+        </p>
+      ) : (
+        <p className='text-white tracking-wide'>
+          Releasing on <strong>{releaseDate}</strong> by <strong>{developer}</strong>
+        </p>
+      )}
       <div className="relative flex flex-col gap-2">
         <div className='relative flex flex-row gap-2'>
           <div className="flex flex-col justify-center gap-3 text-white p-4 bg-[#1E1E1E] shadow-box-card rounded-lg border-[1px] border-zinc-800">

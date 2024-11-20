@@ -6,23 +6,23 @@ interface ExtendedSGDBGame extends SGDBGame {
 }
 
 async function getSGDBImage(name: string) {
-    // Fetching SGDB grids for app ID based on name (the results have to have a release date to count as a game);
-    // Find the first (best) static grid/capsule image
-    const client = new SGDB(`${process.env.SGDB_API_KEY}`);
-    const searchData = await client.searchGame(name) as ExtendedSGDBGame[];
-    const appid = searchData.find((data) => data.release_date !== undefined)?.id as number;
-    if(!appid) {
-      console.log(`SGDB: No appid found for game: ${name}`);
-      return null;
-    }
-    const grids = await client.getGrids({ type: 'game', id: appid, types: ['static'], styles: ['alternate'], dimensions: ['600x900'], nsfw: 'false' });
-    if(!grids[0]) {
-      console.log(`SGDB: No grids returned for app: ${name}`);
-      return null;
-    }
-    const capsuleImage = grids[0].url.toString();
+  // Fetching SGDB grids for app ID based on name (the results have to have a release date to count as a game);
+  // Find the first (best) static grid/capsule image
+  const client = new SGDB(`${process.env.SGDB_API_KEY}`);
+  const searchData = await client.searchGame(name) as ExtendedSGDBGame[];
+  const appid = searchData.find((data) => data.release_date !== undefined)?.id as number;
+  if(!appid) {
+    console.log(`SGDB: No appid found for game: ${name}`);
+    return null;
+  }
+  const grids = await client.getGrids({ type: 'game', id: appid, types: ['static'], styles: ['alternate'], dimensions: ['600x900'], nsfw: 'false' });
+  if(!grids[0]) {
+    console.log(`SGDB: No grids returned for app: ${name}`);
+    return null;
+  }
+  const capsuleImage = grids[0].url.toString();
 
-    return capsuleImage;
+  return capsuleImage;
 }
 
 export async function GET(request: Request) {
@@ -44,4 +44,3 @@ export async function GET(request: Request) {
     return Response.json({ error: 'SGDB: Internal Server Error' }, { status: 500 });
   }
 }
-

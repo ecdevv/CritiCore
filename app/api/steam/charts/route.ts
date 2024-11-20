@@ -1,4 +1,4 @@
-async function getStoreData() {
+async function getSteamCharts() {
   // Fetch data from Steam API
   const allResponses = await Promise.all([
     fetch(`${process.env.STEAM_API_TOP_RELEASES}`),
@@ -35,7 +35,7 @@ async function getStoreData() {
 
 export async function GET(_request: Request) {  
   try {
-    const { topReleases, mostPlayed } = await getStoreData();
+    const { topReleases, mostPlayed } = await getSteamCharts();
     return Response.json({ status: 200, topReleases, mostPlayed });
   } catch (error) {
     console.error('STEAM:', error);

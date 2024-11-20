@@ -1,8 +1,9 @@
+import * as cheerio from 'cheerio';
 import { redis } from '@/app/utility/redis';
 import { normalizeString } from '@/app/utility/strings';
 
-const ID_EXPIRY = 24 * 60 * 60;  // 24 hours
-const DATA_EXPIRY = 24 * 60 * 60;  // 24 hours
+const ID_EXPIRY = 7 * 24 * 60 * 60;  // 7 days
+const DATA_EXPIRY = 2 * 60 * 60;     // 2 hours
 
 // const mockData = { id: undefined, name: undefined, releaseDate: undefined, developer: undefined, publisher: undefined,
 //   hasLootBoxes: true, percentRec: 91, criticScore: 88, userScore: -1, totalCriticReviews: 84, totalUserReviews: -1, totalTopCriticReviews: -1,
@@ -36,7 +37,7 @@ async function getAppIDByName(name: string) {
   const data = await response.json();
   if (!data) {
     console.log('OC: Invalid search data, status code: 404');
-    await redis.set(cacheKey, "", 'EX', ID_EXPIRY);
+    await redis.set(cacheKey, "", 'EX', DATA_EXPIRY);
     return null;
   }
 
@@ -44,8 +45,7 @@ async function getAppIDByName(name: string) {
   const apps = data as Array<{ id: number; name: string; dist: number }>;
   const appid = apps.find(app => normalizeString(app.name) === normalizedName)?.id || undefined;
   if (!appid) {
-    console.log('OC: Invalid App ID, status code: 404');
-    await redis.set(cacheKey, "", 'EX', ID_EXPIRY);
+    await redis.set(cacheKey, "", 'EX', DATA_EXPIRY);
     return null;
   }
 
@@ -54,7 +54,7 @@ async function getAppIDByName(name: string) {
   return appid;
 }
 
-async function getAppData(appid: number) {
+async function getOCData(appid: number) {
   const cacheKey = `oc:${appid}`;
   const cachedData = await redis.get(cacheKey);
   if (cachedData === "") return null;
@@ -73,6 +73,9 @@ async function getAppData(appid: number) {
   };
   const response = await fetch(url, { ...options, cache: 'force-cache' });
   if (!response.ok) {
+    console.log(`OC: Attempting to fetch game data via fallback...`);
+    const pageData = await getDataByPage(appid); // If we run out of requests, we search the page instead
+    if (pageData) return pageData;
     console.log(`OC: Failed to fetch game data, status code: ${response.status}`);
     await redis.set(cacheKey, "", 'EX', 60);  // 1 minute for failed responses
     return null;
@@ -80,7 +83,7 @@ async function getAppData(appid: number) {
   const data = await response.json();
   if (!data) {
     console.log('OC: Invalid game data, status code: 404');
-    await redis.set(cacheKey, "", 'EX', ID_EXPIRY);
+    await redis.set(cacheKey, "", 'EX', DATA_EXPIRY);
     return null;
   }
 
@@ -94,10 +97,12 @@ async function getAppData(appid: number) {
   const hasLootBoxes = data.hasLootBoxes;
   const percentRec = Math.round(data.percentRecommended);
   const criticScore = Math.round(data.topCriticScore);
-  const userScore = -1;
+  const medianScore = data.medianScore;
+  const percentile = data.percentile;
   const totalCriticReviews = data.numReviews;
-  const totalUserReviews = -1;
   const totalTopCriticReviews = data.numTopCriticReviews;
+  const userScore = -1;
+  const totalUserReviews = -1;
   const tier = { name: data.tier, url: 'https://' + process.env.OPENCRITIC_IMG_HOST + '/mighty-man/' + data.tier.toLowerCase() + '-man.png' };
   const ocUrl = data.url;
 
@@ -108,13 +113,58 @@ async function getAppData(appid: number) {
   const capsuleImage = capsuleImageResponse?.ok ? capsuleImageUrl : undefined;
   
   // Update cache entry and return this entry
-  const newEntry = { id, name, releaseDate, developer, publisher, hasLootBoxes, percentRec, criticScore, userScore, totalCriticReviews, totalUserReviews, totalTopCriticReviews, tier, url: ocUrl, capsuleImage };
+  const newEntry = { id, name, releaseDate, developer, publisher, hasLootBoxes, percentRec, criticScore, medianScore, percentile, totalCriticReviews, totalTopCriticReviews, userScore, totalUserReviews, tier, url: ocUrl, capsuleImage };
   
   // Cache the appIDCache for the normalized name to skip appIDByName calls since normalized names are === page's game name
   const normalizedAppName = normalizeString(name);
   await redis.set(`oc:${normalizedAppName}`, id, 'EX', ID_EXPIRY);
   await redis.set(`oc:${id}`, JSON.stringify(newEntry), 'EX', DATA_EXPIRY);
-  console.log(`OC: Fetched game data for game: ${normalizedAppName}`);
+  return newEntry;
+}
+
+async function getDataByPage(appid: number) {
+  const url = `${process.env.OPENCRITIC_PAGE_GAME}/${appid}/${appid}`;
+  const response = await fetch(url);
+  if (!response.ok) return null;
+  const html = await response.text();
+  const $ = cheerio.load(html);
+
+  const jsonScript = $('#serverApp-state[type="application/json"]').html();
+  const parsedData = JSON.parse(jsonScript?.replace(/&q;/g, '"') || '{}');
+  if (!parsedData) return null;
+  const data = parsedData[`game/${appid}`];
+  if (!data) return null;
+  
+  // Extract data from the response
+  const gameData = {
+    id: data.id,
+    name: data.name,
+    date: new Date(data.firstReleaseDate),
+    developer: data.Companies.find((c: { type: string }) => c.type.toLowerCase() === 'developer')?.name || data.Companies.find((c: { type: string }) => c.type.toLowerCase() === 'publisher')?.name,
+    publisher: data.Companies.find((c: { type: string }) => c.type.toLowerCase() === 'publisher')?.name || data.Companies.find((c: { type: string }) => c.type.toLowerCase() === 'developer')?.name,
+    hasLootBoxes: data.hasLootBoxes,
+    percentRec: Math.round(data.percentRecommended),
+    criticScore: Math.round(data.topCriticScore),
+    medianScore: data.medianScore,
+    percentile: data.percentile,
+    totalCriticReviews: data.numReviews,
+    totalTopCriticReviews: data.numTopCriticReviews,
+    userScore: -1,
+    totalUserReviews: -1,
+    tier: { name: data.tier, url: 'https://' + process.env.OPENCRITIC_IMG_HOST + '/mighty-man/' + data.tier.toLowerCase() + '-man.png' },
+    ocUrl: data.url,
+
+  };
+  const releaseDate = `${gameData.date.toLocaleString('default', { month: 'long' })} ${gameData.date.getDate()}, ${gameData.date.getFullYear()}`
+
+  // Fetch capsule image to ensure it exists, otherwise return undefined capsuleImage
+  const boxImageExists = !!data.images?.box?.og;
+  const capsuleImageUrl = boxImageExists ? data.images.box.og : undefined; // Box image
+  const capsuleImageResponse = capsuleImageUrl ? await fetch(capsuleImageUrl, { method: 'HEAD' }) : undefined;
+  const capsuleImage = capsuleImageResponse?.ok ? capsuleImageUrl : undefined;
+
+  const newEntry = { ...gameData, releaseDate, capsuleImage };
+  redis.set(`oc:${appid}`, JSON.stringify(newEntry), 'EX', DATA_EXPIRY);
   return newEntry;
 }
 
@@ -130,7 +180,7 @@ export async function GET(request: Request) {
       console.log(`OC: No app ID found for game name: ${identifier}, status code: 404`);
       return Response.json({ status: 404, error: `No app ID found for game name: ${identifier}, status code: 404'` });
     }
-    const data = await getAppData(appid as number);
+    const data = await getOCData(appid as number);
     // const data = mockData;
 
     return Response.json({ status: 200, ...data });

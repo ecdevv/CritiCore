@@ -1,12 +1,46 @@
 import * as cheerio from 'cheerio';
 import { redis }from "@/app/utility/redis";
-import { getAppIndex } from "@/app/utility/api";
+import { getSteamIndex } from "@/app/utility/api";
 import { formatDate } from "@/app/utility/dates";
 import { normalizeString } from "@/app/utility/strings";
 
-const ID_EXPIRY = 24 * 60 * 60;  // 24 hours
-const DATA_EXPIRY = 24 * 60 * 60;   // 24 hours
-const DYNAMIC_EXPIRY = 1 * 5 * 60;   // 5 minutes
+const ID_EXPIRY = 7 * 24 * 60 * 60;   // 7 days
+const DATA_EXPIRY = 2 * 60 * 60;      // 2 hours
+const DYNAMIC_EXPIRY = 1 * 5 * 60;    // 5 minutes
+
+async function getSteamDatasByName(names: string[]) {
+  const appIndex = await getSteamIndex();  // Get the cached app Index
+  const appDatas = await Promise.all(
+    names.map(async (name) => {
+      try {
+        // Check cache first for the app id and return the data for it if found
+        const appid = await searchAppIndex(appIndex, normalizeString(name));
+        if (!appid) return null;
+        const appData = await getSteamData(Number(appid));
+        if (!appData || !appData.id) return null;
+        return { ...appData };
+      } catch {
+        return null;
+      }
+    })
+  ).then(results => results.filter(data => data !== null));
+  
+  return appDatas;
+}
+
+async function getAppIDByName(name: string) {
+  const normalizedName = normalizeString(name);
+  const cacheKey = `steam:${normalizedName}`;
+  const cachedData = await redis.get(cacheKey);
+  if (cachedData === "") return null;
+  if (cachedData) return cachedData;
+
+  console.log(`STEAM: Fetching app id for game name: ${normalizedName}`);
+  const appIndex = await getSteamIndex();
+  const appid = await searchAppIndex(appIndex, normalizedName);
+  if (!appid) return null;
+  return appid;
+}
 
 async function searchAppIndex(appIndex: { [key: string]: number }, normalizedName: string) {
   const cacheKey = `steam:${normalizedName}`;
@@ -18,7 +52,7 @@ async function searchAppIndex(appIndex: { [key: string]: number }, normalizedNam
     // Find the appid based on the game name from the appIndex.
     const appid = appIndex[normalizedName] || null;
     if (!appid) {
-      await redis.set(cacheKey, "", 'EX', ID_EXPIRY);
+      await redis.set(cacheKey, "", 'EX', DATA_EXPIRY);
       return null;
     }
     await redis.set(cacheKey, appid, 'EX', ID_EXPIRY);
@@ -28,49 +62,27 @@ async function searchAppIndex(appIndex: { [key: string]: number }, normalizedNam
   }
 };
 
-async function getAppIDByName(name: string) {
-  const normalizedName = normalizeString(name);
-  const cacheKey = `steam:${normalizedName}`;
-  const cachedData = await redis.get(cacheKey);
-  if (cachedData === "") return null;
-  if (cachedData) return cachedData;
+async function getSteamDatas(appids: number[]) {
+  // Fetch app data for each app ID
+  const appDatas = await Promise.all(
+    appids.map(async (appid) => {
+      try {
+        const appData = await getSteamData(Number(appid));
+        if (!appData || !appData.id) return null;
+        return { ...appData };
+      } catch {
+        return null;
+      }
+    })
+  ).then(results => results.filter(data => data !== null));
 
-  console.log(`STEAM: Fetching app id for game name: ${normalizedName}`);
-  const appIndex = await getAppIndex();
-  const appid = await searchAppIndex(appIndex, normalizedName);
-  if (!appid) return null;
-  return appid;
+  // Remove duplicates based on the ID
+  const uniqueAppDatas = Array.from(new Map(appDatas.map(app => [app.id, app])).values());
+
+  return uniqueAppDatas;
 }
 
-async function getAppByStore(appid: number) {
-  const url = `${process.env.STEAM_STORE_APP}/${appid}`;
-  const response = await fetch(url);
-  if (!response.ok) return null;
-  const html = await response.text();
-  const $ = cheerio.load(html);
-
-  const name = $('#appHubAppName').text().trim() || "";
-  const date = $('.release_date .date').text().trim() || "";
-  let developer = null;
-  let publisher = null;
-
-  $('.dev_row').each((_, element) => {
-    const subtitle = $(element).find('.subtitle.column').text().trim();
-    const summary = $(element).find('.summary.column a').text().trim();
-
-    if (subtitle === 'Developer:') {
-      developer = summary;
-    } else if (subtitle === 'Publisher:') {
-      publisher = summary;
-    }
-  });
-
-  const newEntry = { id: appid, name, releaseDate: formatDate(date), developer, publisher };
-  redis.set(`steam:${appid}`, JSON.stringify(newEntry), 'EX', DATA_EXPIRY);
-  return newEntry;
-}
-
-async function getAppData(appid: number) {
+async function getSteamData(appid: number) {
   const cacheKey = `steam:${appid}`;
   const cachedData = await redis.get(cacheKey);
   if (cachedData === "") return null;
@@ -84,7 +96,8 @@ async function getAppData(appid: number) {
     fetch(`${process.env.STEAM_API_APPREVIEWS}/${appid}?${new URLSearchParams({ json: '1', language: 'all', purchase_type: 'all' })}`),
   ]);
   if (!allResponses.every(response => response.ok)) {
-    const storeData = await getAppByStore(appid);
+    console.log(`STEAM: Failed respopnse, attempting to fetch game data via fallback...`);
+    const storeData = await getDataByStore(appid);
     if (storeData) return storeData;
     const failedResponse = allResponses.find(response => !response.ok);
     console.log(`STEAM: Failed to fetch app data, status code: ${failedResponse?.status}`);
@@ -97,15 +110,14 @@ async function getAppData(appid: number) {
     reviewsResponse.json()
   ]);
   if (!detailsData || !detailsData[appid] || detailsData[appid].success !== true) {
-    const storeData = await getAppByStore(appid);
+    console.log(`STEAM: No details data, attempting to fetch game data via fallback...`);
+    const storeData = await getDataByStore(appid);   // Game may exist without critic data, but it won't be included in the appIndex so we search the store page instead;
     if (storeData) return storeData;
     console.log('STEAM: Invalid details data, status code: 404');
-    await redis.set(cacheKey, "", 'EX', 60);  // 1 minute for failed responses (details data is always returning ok and we should looking up good ids now through search page)
+    await redis.set(cacheKey, "", 'EX', 60);        // 1 minute for failed responses (details data is always returning ok and we should be looking up good ids now through search page)
     return null;
   }
   if (detailsData[appid].data.type !== 'game') {
-    const storeData = await getAppByStore(appid);
-    if (storeData) return storeData;
     console.log('STEAM: Details data is not a game, status code: 404');
     await redis.set(cacheKey, "", 'EX', DATA_EXPIRY);
     return null;
@@ -136,7 +148,7 @@ async function getAppData(appid: number) {
 
   // Fetch capsule image to ensure it exists, otherwise return undefined capsuleImage
   const capsuleImageUrl = process.env.STEAM_CDN_CAPSULE + '/' + id + '/' + 'library_600x900_2x.jpg';
-  const capsuleImageResponse = await fetch(capsuleImageUrl, { method: 'HEAD', next: { revalidate: 7200 } });  // 2 hours
+  const capsuleImageResponse = await fetch(capsuleImageUrl, { method: 'HEAD' });
   const capsuleImage = capsuleImageResponse.ok ? capsuleImageUrl : undefined;
 
   // Update entry and return this entry
@@ -151,7 +163,7 @@ async function getAppData(appid: number) {
   return newEntry;
 }
 
-async function getDynamicData(appid: number) {
+async function getSteamDynamicData(appid: number) {
   const cacheKey = `steam:${appid}:dynamic`;
   const cachedData = await redis.get(cacheKey);
   if (cachedData) return JSON.parse(cachedData);
@@ -166,44 +178,32 @@ async function getDynamicData(appid: number) {
   return newEntry;
 }
 
-async function getAppDatasByName(names: string[]) {
-  const appIndex = await getAppIndex();  // Get the cached app Index
-  const appDatas = await Promise.all(
-    names.map(async (name) => {
-      try {
-        // Check cache first for the app id and return the data for it if found
-        const appid = await searchAppIndex(appIndex, normalizeString(name));
-        if (!appid) return null;
-        const appData = await getAppData(Number(appid));
-        if (!appData || !appData.id) return null;
-        return { ...appData };
-      } catch {
-        return null;
-      }
-    })
-  ).then(results => results.filter(data => data !== null));
-  
-  return appDatas;
-}
+async function getDataByStore(appid: number) {
+  const url = `${process.env.STEAM_STORE_APP}/${appid}`;
+  const response = await fetch(url);
+  if (!response.ok) return null;
+  const html = await response.text();
+  const $ = cheerio.load(html);
 
-async function getAppDatas(appids: number[]) {
-  // Fetch app data for each app ID
-  const appDatas = await Promise.all(
-    appids.map(async (appid) => {
-      try {
-        const appData = await getAppData(Number(appid));
-        if (!appData || !appData.id) return null;
-        return { ...appData };
-      } catch {
-        return null;
-      }
-    })
-  ).then(results => results.filter(data => data !== null));
+  const name = $('#appHubAppName').text().trim() || "";
+  const date = $('.release_date .date').text().trim() || "";
+  let developer = null;
+  let publisher = null;
 
-  // Remove duplicates based on the ID
-  const uniqueAppDatas = Array.from(new Map(appDatas.map(app => [app.id, app])).values());
+  $('.dev_row').each((_, element) => {
+    const subtitle = $(element).find('.subtitle.column').text().trim();
+    const summary = $(element).find('.summary.column a').text().trim();
 
-  return uniqueAppDatas;
+    if (subtitle === 'Developer:') {
+      developer = summary;
+    } else if (subtitle === 'Publisher:') {
+      publisher = summary;
+    }
+  });
+
+  const newEntry = { id: appid, name, releaseDate: formatDate(date), developer, publisher };
+  redis.set(`steam:${appid}`, JSON.stringify(newEntry), 'EX', DATA_EXPIRY);
+  return newEntry;
 }
 
 export async function GET(request: Request) {
@@ -221,8 +221,8 @@ export async function GET(request: Request) {
     // If the identifier is a number, directly fetch the app data
     if (isSingleNumberId) {
       const [appData, dynamicData] = await Promise.all([
-        getAppData(Number(identifiers[0])),
-        getDynamicData(Number(identifiers[0]))
+        getSteamData(Number(identifiers[0])),
+        getSteamDynamicData(Number(identifiers[0]))
       ]);
       const newEntry = { ...appData, ...dynamicData };
       if (appData && appData.id) return Response.json({ status: 200, appData: newEntry });
@@ -232,7 +232,7 @@ export async function GET(request: Request) {
 
     // If the identifiers are numbers, directly fetch the app datas
     if (isMultipleNumberIds) {
-      const appDatas = await getAppDatas(identifiers.map(Number));
+      const appDatas = await getSteamDatas(identifiers.map(Number));
       if (appDatas.length) return Response.json({ status: 200, appDatas });
       console.log(`STEAM: No app datas found for game ids: ${identifiers}, status code: 404`);
       return Response.json({ status: 404, error: `No app datas found for game ids: ${identifiers}, status code: 404` });
@@ -240,7 +240,7 @@ export async function GET(request: Request) {
 
     // If the identifiers are names, get ids by name, then fetch the app data
     if (isMultipleNames) {
-      const appDatas = await getAppDatasByName(identifiers);
+      const appDatas = await getSteamDatasByName(identifiers);
       if (appDatas.length) return Response.json({ status: 200, appDatas });
       console.log(`STEAM: No app datas found for games: ${identifiers}, status code: 404`);
       return Response.json({ status: 404, error: `No app datas found for games: ${identifiers}, status code: 404` });
@@ -253,8 +253,8 @@ export async function GET(request: Request) {
       return Response.json({ status: 404, error: `No app id found for game name: ${identifier}, status code: 404` });
     }
     const [appData, dynamicData] = await Promise.all([
-      getAppData(Number(appid)),
-      getDynamicData(Number(appid))
+      getSteamData(Number(appid)),
+      getSteamDynamicData(Number(appid))
     ])
     if (!appData || !appData.id) {
       console.log(`STEAM: No app data found for game name: ${identifier}, status code: 404`);

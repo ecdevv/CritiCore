@@ -3,8 +3,9 @@ import Link from 'next/link'
 import { TbArrowBackUp } from 'react-icons/tb'
 import BackButton from '@/app/components/common/BackButton'
 import ScoreBox from '@/app/components/score/ScoreBox'
-import { OCData } from '@/app/utility/types'
+import { capitalizeFirstLetter } from '@/app/utility/strings'
 import { getOpenCriticScoreClass } from '@/app/utility/helper'
+import { OCData } from '@/app/utility/types'
 import ocLogo from '@/public/ocLogo.svg'
 
 interface Props {
@@ -32,17 +33,18 @@ interface OpenCriticDataCardProps {
   referer: string;
   data: OCData;
   name: string;
+  released: boolean;
   releaseDate: string;
   developer: string;
   currentScore: number;
 }
 
-const OCDataCard = ({ pathname, referer, data, name, releaseDate, developer, currentScore}: OpenCriticDataCardProps) => {
+const OCDataCard = ({ pathname, referer, data, name, released, releaseDate, developer, currentScore}: OpenCriticDataCardProps) => {
   const totalCriticReviews = typeof data.totalCriticReviews === 'number' && data.totalCriticReviews >= 0 ? data.totalCriticReviews : 'N/A';
   const hasLootBoxes = data.hasLootBoxes !== false && !data.hasLootBoxes ? 'N/A' : data.hasLootBoxes ? 'Yes' : 'No';
   const percentRec = typeof data.percentRec === 'number' && data.percentRec >= 0 ? data.percentRec : 'N/A';
-  const tierName = data.tier.name || 'N/A';
-  const tierImgUrl = data.tier.url || '/';
+  const tierName = data.tier?.name || 'N/A';
+  const tierImgUrl = data.tier?.url || '/';
   const ocUrl = data.url || 'https://www.opencritic.com/';
   const score = currentScore >= 0 ? currentScore : -1;
 
@@ -53,13 +55,25 @@ const OCDataCard = ({ pathname, referer, data, name, releaseDate, developer, cur
         <TbArrowBackUp size={32} className='group-hover:text-[#2196F3] transition-colors duration-100 ease-in-out'/>
       </BackButton>
       <h1 className="text-4xl font-bold text-white text-center tracking-wide">{name}</h1>
-      <p className='text-white tracking-wide'>Released on <strong>{releaseDate}</strong> by <strong>{developer}</strong></p>
+      { isNaN(new Date(releaseDate).getTime()) ? (
+        <p className='text-white tracking-wide'>
+          <strong>{capitalizeFirstLetter(releaseDate) || 'Invalid Date'}</strong> by <strong>{developer}</strong>
+        </p>
+      ) : released ? (
+        <p className='text-white tracking-wide'>
+          Released on <strong>{releaseDate}</strong> by <strong>{developer}</strong>
+        </p>
+      ) : (
+        <p className='text-white tracking-wide'>
+          Releasing on <strong>{releaseDate}</strong> by <strong>{developer}</strong>
+        </p>
+      )}
       <div className="relative flex flex-col gap-2">
         <div className='relative flex flex-row gap-2'>
           <div className="flex flex-col justify-center gap-3 text-white p-4 bg-[#1E1E1E] shadow-box-card rounded-lg border-[1px] border-zinc-800">
             <p className='flex justify-between gap-4 text-lg'><strong>Total Reviews:</strong><span className={totalCriticReviews !== 'N/A' ? "" : "text-zinc-400"}>{totalCriticReviews}</span></p>
             <p className='flex justify-between gap-4 text-lg'><strong>Has Lootboxes:</strong><span className={hasLootBoxes !== 'N/A' ? "" : "text-zinc-400"}>{hasLootBoxes}</span></p>
-            <Image src={tierImgUrl} alt={tierName} width={75} height={75} className='self-center'/>
+            { tierImgUrl !== '/' && <Image src={tierImgUrl} alt={tierName} width={75} height={75} className='self-center'/> }
           </div>
           <div className="flex flex-col gap-3 text-white">
             <ScoreBox status={data.status} target={true} score={score}>OpenCritic</ScoreBox>
