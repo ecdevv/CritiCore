@@ -9,7 +9,7 @@ interface CardProps {
 
 const Card = ({ name, image }: CardProps ) => {
   return (
-    <Link href={`/game/${normalizeString(name, true)}`} className='transition ease-in-out hover:scale-110'>
+    <Link href={`/game/${normalizeString(name, true)}`} className='group border-[1px] border-zinc-900 shadow-vertical-card rounded-xl sm:hover:scale-110 hover:scale-105 transition-transform duration-200 ease-in-out'>
       <Image
         src={image.og}
         alt={name || 'Placeholder'}
@@ -17,7 +17,7 @@ const Card = ({ name, image }: CardProps ) => {
         height={300}
         placeholder={image.blur ? 'blur' : 'empty'}
         blurDataURL={image.blur || undefined}
-        className='w-[200px] h-[300px] border-[1px] border-zinc-900 shadow-vertical-card rounded-xl transition-all duration-200 ease-in-out'
+        className='border-zinc-800 rounded-xl'  // Setting the border color to match the color for list cards in case we want to transition images
       />
     </Link>
   )

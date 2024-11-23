@@ -5,11 +5,11 @@ const CardList = ({ data = [], children }: { data?: CardCategories[], children?:
   if (data.length === 0) return null;
   
   return (
-  <div className='w-[1150px] flex flex-col p-8'>
-    <h1 className='relative text-3xl font-bold text-white tracking-wide'>{data[0].category}{children}</h1>
-    <div className="grid grid-cols-1 gap-1 mt-4">
+  <div className='w-full flex flex-col gap-5'>
+    <div className={`relative w-full sm:block flex flex-col gap-3 text-3xl font-bold text-white tracking-wide ${children ? 'sm:text-left' : 'lg:text-left'} text-center`}><h1>{data[0].category}</h1>{children}</div>
+    <div className="flex flex-col gap-1">
       {data.map((data, index) => (
-        <Card key={index} data={data}  />
+        <Card key={index} data={data} />
       ))}
     </div>
   </div>

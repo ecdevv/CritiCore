@@ -1,37 +1,24 @@
-import { headers } from "next/headers";
-import Link from "next/link";
+import { headers, cookies } from "next/headers";
+import ViewComponent from "./ViewComponent";
 import CardGrid from "@/app/components/grid/CardGrid";
 import CardList from "@/app/components/list/CardList";
 import Pagination from "@/app/components/pagination/Pagination";
 import { getBlurDataURL }from "@/app/utility/data";
 import { capitalizeFirstLetter, normalizeString } from "@/app/utility/strings";
 import { CardCategories, GameCategories } from "@/app/utility/types";
-import { PLACEHOLDER_200X300 } from "@/app/utility/constants";
+import { PLACEHOLDER_184X69, PLACEHOLDER_200X300 } from "@/app/utility/constants";
 
-type DisplayType = "grid" | "list";
 interface SearchProps {
   params: Promise<{ query: string }>;
-  searchParams: Promise<{ display: string, p: string | number }>;
-}
-
-const ViewComponent = ( { handlePage }: { handlePage: (newState: DisplayType) => string } ) => {
-  return (
-    <div className='absolute top-1/2 right-0 translate-y-[-50%] flex gap-4 text-center'>
-      <Link href={`?${new URLSearchParams({ p: handlePage('grid'), display: 'grid' })}`} replace className='w-[100px] px-4 py-[2px] text-2xl font-semibold text-white tracking-wide rounded shadow-box-card border-[1px] border-zinc-800 hover:border-zinc-700 hover:bg-[#151517] transition-all duration-100 ease-in-out'>
-        <h1 className="text-3xl font-bold text-white tracking-wide">Grid</h1>
-      </Link>
-      <Link href={`?${new URLSearchParams({ p: handlePage('list'), display: 'list' })}`} replace className='w-[100px] px-4 py-[2px] text-2xl font-semibold text-white tracking-wide rounded shadow-box-card border-[1px] border-zinc-800 hover:border-zinc-700 hover:bg-[#151517] transition-all duration-100 ease-in-out'>
-        <h1 className="text-3xl font-bold text-white tracking-wide">List</h1>
-      </Link>
-    </div>
-  )
+  searchParams: Promise<{ view: string, p: string | number }>;
 }
 
 export default async function SearchPage({ params, searchParams }: SearchProps) {
   const headersList = await headers();
+  const cookiesStore = await cookies();
   const baseUrl = headersList.get('x-base-url') || '';
   const searchQuery = (await params).query || '';
-  const state = (await searchParams).display || 'grid';
+  const state = cookiesStore.get('view')?.value.toString() || 'grid';
   const page = (await searchParams).p || 1;
   const maxLength = state === 'grid' ? 20 : 40
 
@@ -50,7 +37,7 @@ export default async function SearchPage({ params, searchParams }: SearchProps) 
           .map(async (game: GameCategories) => {
             const headerog = game.headerImage || undefined
             const headerblur = headerog ? await getBlurDataURL(headerog) : undefined
-            const headerimage = headerog ? { og: headerog, blur: headerblur } : { og: PLACEHOLDER_200X300, blur: undefined };
+            const headerimage = headerog ? { og: headerog, blur: headerblur } : { og: PLACEHOLDER_184X69, blur: undefined };
             const og = game.capsuleImage || (await fetch(`${baseUrl}/api/sgdb/${normalizeString(game.name, true)}`, { next: { revalidate: 7200 } }).then(res => res.json())).capsuleImage || undefined;  // 2 hours
             const blur = og ? await getBlurDataURL(og) : undefined;
             const image = og ? { og, blur } : { og: PLACEHOLDER_200X300, blur: undefined };
@@ -83,26 +70,19 @@ export default async function SearchPage({ params, searchParams }: SearchProps) 
       return (pageNum < Math.ceil(searchResults.length / maxLength) ? (pageNum + 1) : Math.ceil(searchResults.length / maxLength));
     }
 
-    const handlePageOnSwitch = (newState: DisplayType) => {
-      const newMaxLength = newState === 'grid' ? 20 : 40;
-      const newMaxPages = Math.ceil(searchResults.length / newMaxLength);
-      const newPage = Math.min(Number(page), newMaxPages);
-      return newPage.toString();
-    };
-
     return (
-      <div className='flex justify-center items-start min-h-screen p-8 bg-zinc-900'>
+      <div className='flex justify-center items-start min-h-screen sm:p-12 py-12 px-6 bg-zinc-900'>
         {paginatedData?.length > 0 
-          ? <div className="flex flex-col items-center justify-start p-8">
-              {state === 'grid' 
+          ? <div className={`${state === 'grid' ? '' : 'xl:w-[1088px] w-full'} flex flex-col items-center justify-start mt-12 gap-10`}>
+              {state === 'grid'
                 ? <CardGrid data={paginatedData}>
-                    <ViewComponent handlePage={handlePageOnSwitch}/>
+                    <ViewComponent page={page.toString()} searchResultsLength={searchResults.length} />
                   </CardGrid>
                 : <CardList data={paginatedData}>
-                    <ViewComponent handlePage={handlePageOnSwitch}/>
+                    <ViewComponent page={page.toString()} searchResultsLength={searchResults.length} />
                   </CardList>
               }
-              {(searchResults.length > maxLength ) && <Pagination display={state} handlePrev={handlePrevPage} handleNext={handleNextPage} />}
+              {(searchResults.length > maxLength ) && <Pagination handlePrev={handlePrevPage} handleNext={handleNextPage} />}
             </div>
           : <h1 className="self-center text-white">No results found.</h1>
         }
@@ -111,7 +91,7 @@ export default async function SearchPage({ params, searchParams }: SearchProps) 
   } catch (error) {
     console.error(error);
     return (
-      <div className="flex justify-center items-center min-h-screen p-8 bg-zinc-900">
+      <div className="flex justify-center items-center min-h-screen sm:p-12 py-12 px-6 bg-zinc-900">
         <p className="text-white">Failed to load data. Please try again later.</p>
       </div>
     );

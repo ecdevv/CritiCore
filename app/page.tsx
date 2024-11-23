@@ -3,11 +3,12 @@ import CardGrid from "./components/grid/CardGrid";
 import { getBlurDataURL } from "./utility/data";
 import { capitalizeFirstLetter, normalizeString } from "./utility/strings";
 import { CardCategories, GameCategories } from "./utility/types";
-import { PLACEHOLDER_200X300 } from "./utility/constants";
+import { PLACEHOLDER_184X69, PLACEHOLDER_200X300 } from "./utility/constants";
 
 export default async function Home() {
   const headersList = await headers();
   const baseURL = headersList.get('x-base-url');
+  
   try {
     // Initializing CardGrids and fetch popular games and HoF games from OpenCritic
     let cardGridOne: CardCategories[] = [];
@@ -38,7 +39,7 @@ export default async function Home() {
             const developer = ocGame.developer || steamGame?.developer || 'N/A';
             const headerog = ocGame.headerImage || steamGame?.headerImage || undefined
             const headerblur = headerog ? await getBlurDataURL(headerog) : undefined
-            const headerimage = headerog ? { og: headerog, blur: headerblur } : { og: PLACEHOLDER_200X300, blur: undefined };
+            const headerimage = headerog ? { og: headerog, blur: headerblur } : { og: PLACEHOLDER_184X69, blur: undefined };
             const og = steamGame?.capsuleImage || ocGame.capsuleImage || (await fetch(`${baseURL}/api/sgdb/${normalizeString(name, true)}`, { next: { revalidate: 7200 } }).then(res => res.json())).capsuleImage || undefined; // 2 hours
             const blur = og ? await getBlurDataURL(og) : undefined;
             const image = og ? { og, blur } : { og: PLACEHOLDER_200X300, blur: undefined };
@@ -100,18 +101,18 @@ export default async function Home() {
     }
 
     return (
-      <div className="flex justify-center items-start min-h-screen p-8 bg-zinc-900">
-        <div className="flex flex-col items-center p-8">
-          <CardGrid data={cardGridOne}/>
-          <CardGrid data={cardGridTwo}/>
+      <div className="flex justify-center items-start min-h-screen sm:p-12 py-12 px-6 bg-zinc-900">
+        <div className="flex flex-col items-center mt-12 gap-14">
+          <CardGrid data={cardGridOne} />
+          <CardGrid data={cardGridTwo} />
         </div>
       </div>
     );
   } catch (error) {
     console.error('Error loading data:', error);
     return (
-      <div className="flex justify-center items-center min-h-screen p-8 bg-zinc-900">
-        <div className="flex flex-col items-center p-8">
+      <div className="flex justify-center items-center min-h-screen sm:p-12 py-12 px-6 bg-zinc-900">
+        <div className="flex flex-col items-center">
           <h1 className="text-6xl font-bold">Error loading data</h1>
           <p className="text-2xl">Please try again later.</p>
         </div>

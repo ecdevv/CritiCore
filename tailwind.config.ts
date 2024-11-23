@@ -38,6 +38,7 @@ const config: Config = {
         negative: "var(--negative)",
       },
       boxShadow: {
+        'box': '1px 1px 1px rgba(0, 0, 0, 0.5)',
         'vertical-card': '0 4px 12px rgba(0, 0, 0, 1)',
         'box-card': '0 2px 6px rgba(0, 0, 0, 1)',
       }
