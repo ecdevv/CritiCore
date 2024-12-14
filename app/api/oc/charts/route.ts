@@ -18,8 +18,8 @@ async function getOCCharts() {
     }
   }
   const allResponses = await Promise.all([
-    fetch(`${process.env.OPENCRITIC_API_POPULAR}`, { ...options, cache: 'force-cache' }),
-    fetch(`${process.env.OPENCRITIC_API_HOF}`, { ...options, cache: 'force-cache' }),
+    fetch(`${process.env.OPENCRITIC_API_POPULAR}`, { ...options, next: { revalidate: 28800 } }),  // 8 hours
+    fetch(`${process.env.OPENCRITIC_API_HOF}`, { ...options, next: { revalidate: 28800 } }),  // 8 hours
   ]);
   if (!allResponses.every(response => response.ok)) {
     const failedResponse = allResponses.find(response => !response.ok);

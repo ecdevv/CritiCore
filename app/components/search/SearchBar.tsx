@@ -24,7 +24,7 @@ const SearchBar = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="group w-[30%] relative flex items-center">
+    <form onSubmit={handleSubmit} className="group sm:w-[35%] w-full relative flex items-center">
       <label htmlFor="search-input" className="sr-only">
         Search:
       </label>
@@ -37,9 +37,9 @@ const SearchBar = () => {
         onChange={handleChange}
         placeholder="Search"
         required
-        className="w-full px-4 py-[6px] border-[1px] bg-zinc-900 border-transparent rounded-md outline-transparent focus:outline-none focus:border-zinc-400 group-hover:border-zinc-400 transition-color duration-100 ease-in-out"
+        className="w-full px-4 py-[6px] border-[1px] bg-zinc-900 text-white border-transparent rounded-md outline-transparent focus:outline-none focus:border-zinc-400 group-hover:border-zinc-400 transition-color duration-100 ease-in-out"
       />
-      <button type="submit" className="absolute right-[1px] px-[6px] py-[5px] border-[1px] border-transparent bg-zinc-400 text-white rounded-r-[4px] hover:bg-zinc-300 hover:border-zinc-300 transition-color duration-100 ease-in-out">
+      <button type="submit" className="absolute right-[1px] px-[6px] py-[5px] border-[1px] border-transparent bg-zinc-500 text-white rounded-r-[4px] group-focus-within:bg-zinc-400 group-hover:bg-zinc-400 hover:!bg-zinc-300 hover:border-zinc-300 transition-color duration-100 ease-in-out">
         <CiSearch size={24} aria-label={'Search'} className="text-zinc-800" />
       </button>
     </form>

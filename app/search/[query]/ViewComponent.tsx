@@ -16,27 +16,36 @@ const ViewComponent = ( { page, searchResultsLength }: { page: string, searchRes
 
   return (
     <div className='sm:absolute top-1/2 right-0 sm:translate-y-[-50%] flex gap-3 justify-center items-center'>
-      <Link href={`?${new URLSearchParams({ p: handlePage('grid') })}`} onClick={() => (setCookies('grid'))} replace className='group'>
-        <svg
-          viewBox="0 0 512 512"
-          fill="currentColor"
-          height="32"
-          width="32"
-          className='group-hover:fill-[#2196F3] transition-all duration-200 ease-in-out'
-        >
-          <path d="M240 240H32V32h208zM480 240H272V32h208zM240 480H32V272h208zM480 480H272V272h208z" />
-        </svg>
+      <Link href={`?${new URLSearchParams({ p: handlePage('grid') })}`} onClick={() => (setCookies('grid'))} replace className='group flex justify-center items-center gap-2 sm:w-[125px] w-[75px] px-1 py-1 text-base rounded shadow-box-card border-[1px] border-zinc-800 hover:border-zinc-700 hover:bg-[#151517] transition-color duration-100 ease-in-out'>
+        <div className='w-[16px] h-[16px]'>
+          <svg
+            viewBox="6.5 6.5 11 11"
+            fill="currentColor"
+            width="100%"
+            height="100%"
+            className='group-hover:fill-[#2196F3] transition-all duration-200 ease-in-out'
+          >
+            <path d="M11 7H7v4h4V7zM11 13H7v4h4v-4zM13 13h4v4h-4v-4zM17 7h-4v4h4V7z" />
+          </svg>
+        </div>
+        <span className='sm:inline hidden group-hover:text-[#2196F3] transition-color duration-200 ease-in-out'>Gallery</span>
       </Link>
-      <Link href={`?${new URLSearchParams({ p: handlePage('list') })}`} onClick={() => (setCookies('list'))} replace className='group'>
-        <svg
-          viewBox="4 4 16 16"
-          fill="currentColor"
-          height="32"
-          width="32"
-          className='group-hover:fill-[#2196F3] transition-all duration-200 ease-in-out'
-        >
-          <path d="M9 5v4h12V5M9 19h12v-4H9m0-1h12v-4H9M4 9h4V5H4m0 14h4v-4H4m0-1h4v-4H4v4z" />
-        </svg>
+      <Link href={`?${new URLSearchParams({ p: handlePage('list') })}`} onClick={() => (setCookies('list'))} replace className='group flex justify-center items-center gap-2 sm:w-[125px] w-[75px] px-1 py-1 text-base rounded shadow-box-card border-[1px] border-zinc-800 hover:border-zinc-700 hover:bg-[#151517] transition-color duration-100 ease-in-out'>
+        <div className='w-[16px] h-[16px]'>
+          <svg
+            viewBox="3 2.5 11 11"
+            fill="currentColor"
+            width="100%"
+            height="100%"
+            className='group-hover:fill-[#2196F3] transition-all duration-200 ease-in-out'
+          >
+            <path
+              fillRule="evenodd"
+              d="M2.5 12a.5.5 0 01.5-.5h10a.5.5 0 010 1H3a.5.5 0 01-.5-.5zm0-4a.5.5 0 01.5-.5h10a.5.5 0 010 1H3a.5.5 0 01-.5-.5zm0-4a.5.5 0 01.5-.5h10a.5.5 0 010 1H3a.5.5 0 01-.5-.5z"
+            />
+          </svg>
+        </div>
+        <span className='sm:inline hidden group-hover:text-[#2196F3] transition-color duration-200 ease-in-out'>List</span>
       </Link>
     </div>
   )

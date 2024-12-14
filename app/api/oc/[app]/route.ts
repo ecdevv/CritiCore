@@ -107,13 +107,19 @@ async function getOCData(appid: number) {
   const ocUrl = data.url;
 
   // Fetch capsule image to ensure it exists, otherwise return undefined capsuleImage
+  const bannerImageExists = !!data.images?.banner?.og;
   const boxImageExists = !!data.images?.box?.og;
+  const bannerImageUrl = bannerImageExists ? 'https://' + process.env.OPENCRITIC_IMG_HOST + '/' + data.images.banner.og : undefined; // banner image
   const capsuleImageUrl = boxImageExists ? 'https://' + process.env.OPENCRITIC_IMG_HOST + '/' + data.images.box.og : undefined; // Box image
-  const capsuleImageResponse = capsuleImageUrl ? await fetch(capsuleImageUrl, { method: 'HEAD' }) : undefined;
+  const [bannerImageResponse, capsuleImageResponse] = await Promise.all([
+    bannerImageUrl ? fetch(bannerImageUrl, { method: 'HEAD' }) : Promise.resolve(undefined),
+    capsuleImageUrl ? fetch(capsuleImageUrl, { method: 'HEAD' }) : Promise.resolve(undefined)
+  ]);
+  const headerImage = bannerImageResponse?.ok ? bannerImageUrl : undefined;
   const capsuleImage = capsuleImageResponse?.ok ? capsuleImageUrl : undefined;
   
   // Update cache entry and return this entry
-  const newEntry = { id, name, releaseDate, developer, publisher, hasLootBoxes, percentRec, criticScore, medianScore, percentile, totalCriticReviews, totalTopCriticReviews, userScore, totalUserReviews, tier, url: ocUrl, capsuleImage };
+  const newEntry = { id, name, releaseDate, developer, publisher, hasLootBoxes, percentRec, criticScore, medianScore, percentile, totalCriticReviews, totalTopCriticReviews, userScore, totalUserReviews, tier, url: ocUrl, headerImage, capsuleImage };
   
   // Cache the appIDCache for the normalized name to skip appIDByName calls since normalized names are === page's game name
   const normalizedAppName = normalizeString(name);

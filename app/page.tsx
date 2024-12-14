@@ -14,9 +14,9 @@ export default async function Home() {
     let cardGridOne: CardCategories[] = [];
     let cardGridTwo: CardCategories[] = [];
     const ocData = await fetch(`${baseURL}/api/oc/charts`, { next: { revalidate: 7200 } }).then(res => res.json()); // 2 hours
-
+    
     // Fetch the data for popular and HoF games from Steam and merge it with the data from OpenCritic
-    if (ocData?.status === 200) {
+    if (ocData?.status === 200 && ocData.popular.length > 0 && ocData.hof.length > 0) {
       const [ steamPopDataResponse, steamHofDataResponse ] = await Promise.all([
         fetch(`${baseURL}/api/steam/${ocData.popular.map((game: { name: string }) => normalizeString(game.name, true)).join(',')}`, { next: { revalidate: 7200 } }),
         fetch(`${baseURL}/api/steam/${ocData.hof.map((game: { name: string }) => normalizeString(game.name, true)).join(',')}`, { next: { revalidate: 7200 } })
@@ -61,7 +61,7 @@ export default async function Home() {
     }
     
     // Fetch the charts data for top releases and most played list, then the data for top releases and most played games (all for Steam)
-    if (!ocData || ocData.status !== 200) {
+    if (!ocData || ocData.status !== 200 || ocData.popular.length === 0 || ocData.hof.length === 0) {
       const { topReleases, mostPlayed } = await fetch(`${baseURL}/api/steam/charts`, { next: { revalidate: 7200 } }).then(res => res.json()); // 2 hours
       const [topReleasesResponse, mostPlayedResponse] = await Promise.all([
         fetch(`${baseURL}/api/steam/${topReleases[0].appids.slice(0, 10).join(',')}`, { next: { revalidate: 7200 } }),
@@ -102,7 +102,7 @@ export default async function Home() {
 
     return (
       <div className="flex justify-center items-start min-h-screen sm:p-12 py-12 px-6 bg-zinc-900">
-        <div className="flex flex-col items-center mt-12 gap-14">
+        <div className="flex flex-col items-center sm:mt-12 mt-[96.033px] gap-14 ">
           <CardGrid data={cardGridOne} />
           <CardGrid data={cardGridTwo} />
         </div>

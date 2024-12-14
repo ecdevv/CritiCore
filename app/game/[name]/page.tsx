@@ -6,7 +6,7 @@ import OCDataCard from "./OCDataCard";
 import SteamDataCard from "./SteamDataCard";
 import { getBlurDataURL } from "@/app/utility/data";
 import { capitalizeFirstLetter } from "@/app/utility/strings";
-import { PLACEHOLDER_450X675 } from "@/app/utility/constants";
+import { PLACEHOLDER_450X675, PLACEHOLDER_460X215 } from "@/app/utility/constants";
 
 type ReviewType = "all" | "critic" | "user" ;
 type DisplayType = "none" | "opencritic" | "steam";
@@ -35,14 +35,20 @@ export default async function Game({ params, searchParams }: GameProps) {
       fetch(`${baseURL}/api/oc/${name}`, { next: { revalidate: 300 } }).then(res => res.json()),
       fetch(`${baseURL}/api/steam/${name}`, { next: { revalidate: 300 } }).then(res => res.json())
     ]);
+    console.log(ocData);
     const responseStatus = ocData.status === 200 || steamData.status === 200 ? 200 : 404;
     const displayName = ocData.name || steamData.name || 'N/A';
     const releaseDate = ocData.releaseDate || steamData.releaseDate || 'N/A';
     const released = releaseDate !== 'N/A' && new Date(releaseDate) < new Date();
     const developer = ocData.developer || steamData.developer || 'N/A';
+    const headerImage = steamData.headerImage || ocData.headerImage || undefined;
     const capsuleImage = steamData.capsuleImage || ocData.capsuleImage || (await fetch(`${baseURL}/api/sgdb/${name}`, { next: { revalidate: 7200 } }).then(res => res.json())).capsuleImage;  // 2 hours
-    const capsuleImageBlur = capsuleImage ? await getBlurDataURL(capsuleImage) : undefined;
+    const [headerImageBlur, capsuleImageBlur] = await Promise.all([
+      headerImage ? getBlurDataURL(headerImage) : Promise.resolve(undefined),
+      capsuleImage ? getBlurDataURL(capsuleImage) : Promise.resolve(undefined)
+    ]);
     const image = capsuleImage ? { og: capsuleImage, blur: capsuleImageBlur } : { og: PLACEHOLDER_450X675, blur: undefined };
+    const image2 = headerImage ? { og: headerImage, blur: headerImageBlur } : { og: PLACEHOLDER_460X215, blur: undefined };
     
     const scores = {
       opencritic: { critic: ocData.criticScore, user: ocData.userScore },
@@ -89,35 +95,51 @@ export default async function Game({ params, searchParams }: GameProps) {
         };
 
     return (
-      <div className='flex justify-center items-center min-h-screen p-8 bg-zinc-900'>
+      <div className='flex justify-center items-center min-h-screen lg:px-8 px-2 py-8  bg-zinc-900'>
         {(responseStatus === 200) ? (
           <>
-            <section className="flex justify-center items-center p-8 gap-12">
-              <Link href={image.og || ''} target="_blank" rel="noopener noreferrer" >
-                <Image 
-                  src={image.og}
-                  alt={displayName} 
-                  width={450}
-                  height={675}
-                  priority
-                  placeholder={image.blur ? 'blur' : 'empty'}
-                  blurDataURL={image.blur ? image.blur : undefined}    
-                  className={`border-[1px] border-zinc-900 shadow-vertical-card rounded-xl transition-all duration-200 ease-in-out hover:cursor-pointer hover:opacity-50`}
-                />
-              </Link>
+            <section className="w-full flex lg:flex-row flex-col justify-center items-center py-4 lg:gap-12 gap-6 lg:mt-0 sm:mt-[48.033px] mt-[100px]">
+              <div className='lg:block hidden'>
+                <Link href={image.og || ''} target="_blank" rel="noopener noreferrer">
+                  <Image 
+                    src={image.og}
+                    alt={displayName} 
+                    width={450}
+                    height={675}
+                    priority
+                    placeholder={image.blur ? 'blur' : 'empty'}
+                    blurDataURL={image.blur ? image.blur : undefined}    
+                    className={`border-[1px] border-zinc-900 shadow-vertical-card rounded-xl transition-all duration-200 ease-in-out hover:cursor-pointer hover:opacity-50`}
+                  />
+                </Link>
+              </div>
+              <div className='lg:hidden block'>
+                <Link href={image.og || ''} target="_blank" rel="noopener noreferrer">
+                  <Image 
+                    src={image2.og}
+                    alt={displayName} 
+                    width={460}
+                    height={215}
+                    priority
+                    placeholder={image2.blur ? 'blur' : 'empty'}
+                    blurDataURL={image2.blur ? image2.blur : undefined}    
+                    className={`border-[1px] border-zinc-900 shadow-vertical-card rounded-xl transition-all duration-200 ease-in-out hover:cursor-pointer hover:opacity-50`}
+                  />
+                </Link>
+              </div>
               {(displayType === 'none') && (
-                <div className="w-[725px] flex flex-col justify-center items-center p-8 gap-5">
-                  <h1 className="text-4xl font-bold text-white text-center tracking-wide">{displayName}</h1>
+                <div className="xl:w-[725px] sm:w-[500px] flex flex-col justify-center items-center px-2 gap-5">
+                  <h1 className="sm:text-4xl text-3xl font-bold text-white text-center tracking-wide">{displayName}</h1>
                   { isNaN(new Date(releaseDate).getTime()) ? (
-                    <p className='text-white tracking-wide'>
+                    <p className='text-white text-center tracking-wide'>
                       <strong>{capitalizeFirstLetter(releaseDate) || 'Invalid Date'}</strong> by <strong>{developer}</strong>
                     </p>
                   ) : released ? (
-                    <p className='text-white tracking-wide'>
+                    <p className='text-white text-center tracking-wide'>
                       Released on <strong>{releaseDate}</strong> by <strong>{developer}</strong>
                     </p>
                   ) : (
-                    <p className='text-white tracking-wide'>
+                    <p className='text-white text-center tracking-wide'>
                       Releasing on <strong>{releaseDate}</strong> by <strong>{developer}</strong>
                     </p>
                   )}
@@ -125,7 +147,7 @@ export default async function Game({ params, searchParams }: GameProps) {
                     href={`?${new URLSearchParams({ type: ["all", "critic", "user"][(["all", "critic", "user"].indexOf(reviewType) + 1) % 3] })}`}
                     replace
                     scroll={false}
-                    className="text-center px-4 py-2 text-2xl font-semibold text-white tracking-wide rounded shadow-box-card border-[1px] border-zinc-800 hover:border-zinc-700 hover:bg-[#151517] transition-all duration-100 ease-in-out"
+                    className="text-center px-4 py-2 sm:text-2xl text-xl font-semibold text-white tracking-wide rounded shadow-box-card border-[1px] border-zinc-800 hover:border-zinc-700 hover:bg-[#151517] transition-all duration-100 ease-in-out"
                   >
                     {`${reviewType === "all" ? "All Review" : reviewType === "user" ? "User" : " Critic"} Scores`}
                   </Link>
@@ -137,7 +159,7 @@ export default async function Game({ params, searchParams }: GameProps) {
                     status={-1}
                     score={currentScores.aggregate} 
                     textXL={true} 
-                    className='flex flex-col justify-center items-center w-[145px] aspect-[20/19] p-3 rounded-xl shadow-box-card border-[1px] border-zinc-800 text-center text-white'
+                    className='flex flex-col justify-center items-center sm:w-[145px] w-[120px] aspect-[20/19] p-3 rounded-xl shadow-box-card border-[1px] border-zinc-800 text-center text-white'
                   >
                     Aggregate
                   </ScoreBox>

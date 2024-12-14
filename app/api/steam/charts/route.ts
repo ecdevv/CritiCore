@@ -16,12 +16,12 @@ async function getSteamCharts() {
   
   // Extract data from the responses
   const topReleases = topReleasesData.response.pages.map((page: { name: string; item_ids: { appid: number }[] }) => ({
-    category: page.name,
+    category: page.name + ' On Steam',
     appids: page.item_ids.map(item => item.appid),
   }));
   const mostPlayed = mostPlayedData.response.ranks.map((rank: { rank: number; appid: string; lastWeekRank: number; peakInGame: string; }) => ({ 
     ...rank, 
-    category: 'Most Played'
+    category: 'Most Played On Steam'
   }));
 
   // Update cache entry and return this entry

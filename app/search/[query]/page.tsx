@@ -73,7 +73,7 @@ export default async function SearchPage({ params, searchParams }: SearchProps) 
     return (
       <div className='flex justify-center items-start min-h-screen sm:p-12 py-12 px-6 bg-zinc-900'>
         {paginatedData?.length > 0 
-          ? <div className={`${state === 'grid' ? '' : 'xl:w-[1088px] w-full'} flex flex-col items-center justify-start mt-12 gap-10`}>
+          ? <div className={`${state === 'grid' ? '' : 'xl:w-[1088px] w-full'} flex flex-col items-center justify-start sm:mt-12 mt-[96.033px] gap-10`}>
               {state === 'grid'
                 ? <CardGrid data={paginatedData}>
                     <ViewComponent page={page.toString()} searchResultsLength={searchResults.length} />
