@@ -1,6 +1,6 @@
 import Image from 'next/image' 
 import Link from 'next/link'
-import { normalizeString } from '@/app/utility/strings'
+import { normalizeString } from '@/utility/strings'
 
 interface CardProps {
   name: string;

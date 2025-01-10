@@ -1,6 +1,6 @@
 import * as cheerio from 'cheerio';
-import { redis } from '@/app/utility/redis';
-import { normalizeString } from '@/app/utility/strings';
+import { redis } from '@/utility/redis';
+import { normalizeString } from '@/utility/strings';
 
 const ID_EXPIRY = 7 * 24 * 60 * 60;  // 7 days
 const DATA_EXPIRY = 2 * 60 * 60;     // 2 hours

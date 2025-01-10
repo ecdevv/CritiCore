@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { getScoreColorClass } from '@/app/utility/helper'
+import { getScoreColorClass } from '@/utility/helper'
 
 interface ScoreBoxProps {
   status: number

@@ -1,5 +1,5 @@
-import { setCache } from "@/app/utility/cache";
-import { normalizeString } from "@/app/utility/strings";
+import { setCache } from "@/utility/cache";
+import { normalizeString } from "@/utility/strings";
 
 const MAX_CACHE_SIZE = 100 * 1024 * 1024; // 100MB
 const EXPIRY_TIME = 24 * 60 * 60; // Cache for 24 hours

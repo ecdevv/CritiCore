@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { normalizeString } from '@/app/utility/strings';
+import { normalizeString } from '@/utility/strings';
 import { CiSearch } from 'react-icons/ci';
 
 const SearchBar = () => {

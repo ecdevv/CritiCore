@@ -1,7 +1,7 @@
 import * as cheerio from 'cheerio';
 import levenshtein from 'damerau-levenshtein';
-import { redis } from '@/app/utility/redis';
-import { normalizeString } from "@/app/utility/strings";
+import { redis } from '@/utility/redis';
+import { normalizeString } from "@/utility/strings";
 
 type Game = {
   id: number;

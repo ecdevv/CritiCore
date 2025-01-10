@@ -1,12 +1,11 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { TbArrowBackUp } from 'react-icons/tb'
-import BackButton from '@/app/components/common/BackButton'
-import ScoreBox from '@/app/components/score/ScoreBox'
-import { capitalizeFirstLetter } from '@/app/utility/strings'
-import { getOpenCriticScoreClass } from '@/app/utility/helper'
-import { OCData } from '@/app/utility/types'
-import ocLogo from '@/public/ocLogo.svg'
+import BackButton from '@/components/common/BackButton'
+import ScoreBox from '@/components/score/ScoreBox'
+import { capitalizeFirstLetter } from '@/utility/strings'
+import { getOpenCriticScoreClass } from '@/utility/helper'
+import { OCData } from '@/utility/types'
 
 interface Props {
   href: string;
@@ -85,7 +84,7 @@ const OCDataCard = ({ pathname, referer, data, name, released, releaseDate, deve
         </div>
         <div className='flex flex-row justify-center gap-2'>
           <LinkButton href={ocUrl} className={linkBtnClass}>
-            <Image src={ocLogo} alt="OpenCritic Logo" width={32} height={32} className='group-hover:fill-[#2196F3] transition-all duration-100 ease-in-out' />
+            <Image src={'/ocLogo.svg'} alt="OpenCritic Logo" width={32} height={32} className='group-hover:fill-[#2196F3] transition-all duration-100 ease-in-out' />
           </LinkButton>
         </div>
       </div>

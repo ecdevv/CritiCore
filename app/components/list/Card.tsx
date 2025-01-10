@@ -1,7 +1,7 @@
 import Image from 'next/image' 
 import Link from 'next/link'
-import { normalizeString } from '@/app/utility/strings'
-import { CardCategories } from '@/app/utility/types'
+import { normalizeString } from '@/utility/strings'
+import { CardCategories } from '@/utility/types'
 
 interface CardProps {
   data: CardCategories,
