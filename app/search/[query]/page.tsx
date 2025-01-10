@@ -1,3 +1,4 @@
+import { Metadata, ResolvingMetadata } from "next";
 import { headers, cookies } from "next/headers";
 import ViewComponent from "./ViewComponent";
 import CardGrid from "@/app/components/grid/CardGrid";
@@ -7,6 +8,35 @@ import { getBlurDataURL }from "@/app/utility/data";
 import { capitalizeFirstLetter, normalizeString } from "@/app/utility/strings";
 import { CardCategories, GameCategories } from "@/app/utility/types";
 import { PLACEHOLDER_184X69, PLACEHOLDER_200X300 } from "@/app/utility/constants";
+
+export async function generateMetadata({}, 
+  parent: ResolvingMetadata
+): Promise<Metadata> {
+  // optionally access and extend (rather than replace) parent metadata
+  const previousImages = (await parent).openGraph?.images || []
+
+  // Get the headers
+  const headersList = await headers();
+
+  // Parse the search categories and set the title
+  const pathname = headersList.get('x-pathname') || '';
+  const title = normalizeString(pathname.substring(pathname.lastIndexOf('/') + 1));
+
+  return {
+    title: "Search results for " + title,
+    openGraph: {
+      title: "Search results for " + title,
+      description: 'Search results for ' + title,
+      type: 'website',
+      locale: 'en-US',
+      url: `${headersList.get('x-pathname')}`,
+      siteName: 'Criticore',
+      images: [
+        ...previousImages
+      ]
+    },
+  }
+}
 
 interface SearchProps {
   params: Promise<{ query: string }>;

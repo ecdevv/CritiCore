@@ -1,39 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Criticore - Review Aggregator of OpenCritic and Steam Reviews
 
-## Getting Started
+Criticore is a web project aimed at utilizing API endpoints to display information on the front end intuitively. Additionally, the project focused on robust and scalable architecture, while also emphasizing learning and implementing SEO best practices by utilizing metadata, robots, and sitemaps.
 
-First, run the development server:
+### Features
+
+- Dynamic game pages based on a game's name
+- User-friendly dynamic searches (only works for Steam searchs due to limited OpenCritic API calls)
+- Responsive design for optimal viewing on various devices
+- Dynamically generated blur data to improve perceived performance by displaying low-resolution placeholders for images while high-resolution images load, enhancing the user experience with faster visual feedback
+- All data is cached using upstash/redit, with blur data and Steam's applist cached in-memory with automated cleanup and pages/api calls cached using next revalidation
+- OpenCritic official API calls are using cache: 'force-cache' due to limited API calls, so not sure when the cache truly expires
+- Implemented metadata and sitemap to improve SEO by providing crucial information about the website to search engines, such as the title, description, opengraph, and keywords. This allows search engines to better understand the content of the website and rank it more appropriately in search results
+
+## Installation
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Clone the repository:
+$ git clone https://github.com/ecdevv/CritiCore.git
+
+# Navigate into the repository:
+$ cd /CritiCore
+
+# Install dependencies:
+$ npm install
+
+# Run the app:
+$ npm start or npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Notes/Potential Improvements/Known Issues
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Notes
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Attempted to make everything reusable and from scratch
+- I limited the use of external libraries to these: sharp for blur data generation, date-fns for date formatting, damerau-levenshtein algorithm for searches, ioredis for caching, steamgriddb for backup images, and cheerio for basic web scraping
+- Tried to utilize web scraping minimally; only used to scrape for data for searches due to the length of time it takes to search the applist/appindex and search for games that has a page but is not in the applist/appindex (e.g. soon to be released games)
+- Release dates prioritize OC release dates, then Steam
 
-## Learn More
+### Potential Improvements
 
-To learn more about Next.js, take a look at the following resources:
+- Could definitely improve upon the look and appeal overall
+- Handle invalid data/errors better
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Credits
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+<strong>Tools & Frameworks:</strong> HTML, CSS, Typescript, Next.js, React
 
-## Deploy on Vercel
+<strong>Libraries Used:</strong> sharp, damerau-levenshtein, date-fns, ioredis, steamgriddb, cheerio 
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
-Credits: 
+### Images
   - ocLogo.svg: OpenCritic Inc, Public domain, via Wikimedia Commons

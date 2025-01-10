@@ -9,8 +9,7 @@ const Navbar = () => {
         <div className="flex items-center gap-6">
           <Link href='/' className='relative'>
             <Image
-              className="dark:invert"
-              src="/logo.png"
+              src="/logo.webp"
               alt="logo"
               width={150}
               height={0}

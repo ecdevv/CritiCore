@@ -1,3 +1,4 @@
+import { Metadata, ResolvingMetadata } from 'next'
 import { headers } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
@@ -5,8 +6,37 @@ import ScoreBox from "@/app/components/score/ScoreBox";
 import OCDataCard from "./OCDataCard";
 import SteamDataCard from "./SteamDataCard";
 import { getBlurDataURL } from "@/app/utility/data";
-import { capitalizeFirstLetter } from "@/app/utility/strings";
+import { capitalizeFirstLetter, normalizeString } from "@/app/utility/strings";
 import { PLACEHOLDER_450X675, PLACEHOLDER_460X215 } from "@/app/utility/constants";
+
+export async function generateMetadata({}, 
+  parent: ResolvingMetadata
+): Promise<Metadata> {
+  // optionally access and extend (rather than replace) parent metadata
+  const previousImages = (await parent).openGraph?.images || []
+
+  // Get the headers
+  const headersList = await headers();
+
+  // Parse the search categories and set the title
+  const pathname = headersList.get('x-pathname') || '';
+  const title = capitalizeFirstLetter(normalizeString(pathname.substring(pathname.lastIndexOf('/') + 1)));
+
+  return {
+    title: title,
+    openGraph: {
+      title: title,
+      description: 'Review scores for ' + title,
+      type: 'website',
+      locale: 'en-US',
+      url: `${headersList.get('x-pathname')}`,
+      siteName: 'Criticore',
+      images: [
+        ...previousImages
+      ]
+    },
+  }
+}
 
 type ReviewType = "all" | "critic" | "user" ;
 type DisplayType = "none" | "opencritic" | "steam";
@@ -35,7 +65,6 @@ export default async function Game({ params, searchParams }: GameProps) {
       fetch(`${baseURL}/api/oc/${name}`, { next: { revalidate: 300 } }).then(res => res.json()),
       fetch(`${baseURL}/api/steam/${name}`, { next: { revalidate: 300 } }).then(res => res.json())
     ]);
-    console.log(ocData);
     const responseStatus = ocData.status === 200 || steamData.status === 200 ? 200 : 404;
     const displayName = ocData.name || steamData.name || 'N/A';
     const releaseDate = ocData.releaseDate || steamData.releaseDate || 'N/A';

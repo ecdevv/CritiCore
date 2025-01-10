@@ -51,8 +51,8 @@ const OCDataCard = ({ pathname, referer, data, name, released, releaseDate, deve
   const linkBtnClass = 'group justify-center items-center max-h-[50px] p-2 bg-[#1E1E1E] shadow-box-card rounded-lg border-[1px] border-zinc-800 hover:scale-110 transition-all duration-100 ease-in-out';
   return (
     <div className="relative xl:w-[725px] sm:w-[500px] lg:mt-0 mt-5 flex flex-col items-center p-4 gap-5">
-      <BackButton pathname={pathname} referer={referer} className="group absolute top-[-30px] left-1/2 translate-x-[-50%] p-[2px] bg-[#1E1E1E] fill-white shadow-box-card rounded-lg border-[1px] border-zinc-800">
-        <TbArrowBackUp size={32} className='group-hover:text-[#2196F3] transition-colors duration-100 ease-in-out'/>
+      <BackButton pathname={pathname} referer={referer} className="group absolute top-[-30px] left-1/2 translate-x-[-50%] p-[2px] bg-[#1E1E1E] shadow-box-card rounded-lg border-[1px] border-zinc-800">
+        <TbArrowBackUp size={32} className='group-hover:text-[#2196F3] text-white transition-colors duration-100 ease-in-out'/>
       </BackButton>
       <h1 className="sm:text-4xl text-3xl font-bold text-white text-center tracking-wide">{name}</h1>
       { isNaN(new Date(releaseDate).getTime()) ? (

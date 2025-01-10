@@ -3,52 +3,16 @@ import Link from 'next/link'
 
 const Footer = () => {
   return (
-    <footer className="bg-black row-start-3 flex gap-6 flex-wrap items-center justify-center p-4">
-      <Link
-        className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-        href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
+    <footer className="bg-zinc-950 text-white row-start-3 flex flex-col flex-wrap items-center justify-center sm:px-4 px-2 py-4">
+      <Link href='/' className='relative pb-4'>
         <Image
-          aria-hidden
-          src="/file.svg"
-          alt="File icon"
-          width={16}
-          height={16}
+          src="/logo.webp"
+          alt="logo"
+          width={125}
+          height={0}
         />
-        Learn
       </Link>
-      <Link
-        className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-        href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        <Image
-          aria-hidden
-          src="/window.svg"
-          alt="Window icon"
-          width={16}
-          height={16}
-        />
-        Examples
-      </Link>
-      <Link
-        className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-        href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        <Image
-          aria-hidden
-          src="/globe.svg"
-          alt="Globe icon"
-          width={16}
-          height={16}
-        />
-        Go to nextjs.org →
-      </Link>
+      <div className='border-t-[1px] border-zinc-800 sm:w-[50%] w-full text-center text-sm pt-4'>© 2024 Urban Luxe. All rights reserved. Site design by</div>
     </footer>
   )
 }
