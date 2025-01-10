@@ -36,6 +36,9 @@ $ npm start or npm run dev
 - I limited the use of external libraries to these: sharp for blur data generation, date-fns for date formatting, damerau-levenshtein algorithm for searches, ioredis for caching, steamgriddb for backup images, and cheerio for basic web scraping
 - Tried to utilize web scraping minimally; only used to scrape for data for searches due to the length of time it takes to search the applist/appindex and search for games that has a page but is not in the applist/appindex (e.g. soon to be released games)
 - Release dates prioritize OC release dates, then Steam
+- Homepage does not load Steam Data for the games due to Vercel free tier plan having a 10s timeout limit for API calls
+- Deployed version may not be as optimal as local version due to limitations such as the above
+- Deployed version is quite slow compared to my locally built version
 
 ### Potential Improvements
 
