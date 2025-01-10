@@ -1,6 +1,6 @@
-# Criticore - Review Aggregator of OpenCritic and Steam Reviews
+# CritiCore - Review Aggregator of OpenCritic and Steam Reviews
 
-Criticore is a web project aimed at utilizing API endpoints to display information on the front end intuitively. Additionally, the project focused on robust and scalable architecture, while also emphasizing learning and implementing SEO best practices by utilizing metadata, robots, and sitemaps.
+CritiCore is a web project aimed at presenting API endpoint data in an intuitive and visually engaging way. The platform focuses on creating a seamless and user-friendly experience, making complex data accessible and easy to navigate.
 
 ### Features
 
