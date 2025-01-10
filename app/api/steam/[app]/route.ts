@@ -1,8 +1,8 @@
 import * as cheerio from 'cheerio';
-import { redis }from "@/app/utility/redis";
-import { getSteamIndex } from "@/app/utility/api";
-import { formatDate } from "@/app/utility/dates";
-import { normalizeString } from "@/app/utility/strings";
+import { redis }from "@/utility/redis";
+import { getSteamIndex } from "@/utility/api";
+import { formatDate } from "@/utility/dates";
+import { normalizeString } from "@/utility/strings";
 
 const ID_EXPIRY = 7 * 24 * 60 * 60;   // 7 days
 const DATA_EXPIRY = 2 * 60 * 60;      // 2 hours

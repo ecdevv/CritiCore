@@ -1,5 +1,5 @@
 import Card from './Card';
-import { CardCategories } from '@/app/utility/types';
+import { CardCategories } from '@/utility/types';
 
 const CardGrid = ({ data = [], children }: { data?: CardCategories[], children?: React.ReactNode }) => {
   if (data.length === 0) return null;

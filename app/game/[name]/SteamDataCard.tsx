@@ -2,11 +2,11 @@ import Link from 'next/link'
 import { FaSteam, FaHome } from 'react-icons/fa'
 import { SiSteamdb } from 'react-icons/si'
 import { TbArrowBackUp } from 'react-icons/tb'
-import BackButton from '@/app/components/common/BackButton'
-import ScoreBox from '@/app/components/score/ScoreBox'
-import { capitalizeFirstLetter } from '@/app/utility/strings'
-import { getSteamScoreClass } from '@/app/utility/helper'
-import { SteamData } from '@/app/utility/types'
+import BackButton from '@/components/common/BackButton'
+import ScoreBox from '@/components/score/ScoreBox'
+import { capitalizeFirstLetter } from '@/utility/strings'
+import { getSteamScoreClass } from '@/utility/helper'
+import { SteamData } from '@/utility/types'
 
 interface Props {
   href: string;

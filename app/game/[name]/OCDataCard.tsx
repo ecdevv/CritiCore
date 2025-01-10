@@ -1,11 +1,11 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { TbArrowBackUp } from 'react-icons/tb'
-import BackButton from '@/app/components/common/BackButton'
-import ScoreBox from '@/app/components/score/ScoreBox'
-import { capitalizeFirstLetter } from '@/app/utility/strings'
-import { getOpenCriticScoreClass } from '@/app/utility/helper'
-import { OCData } from '@/app/utility/types'
+import BackButton from '@/components/common/BackButton'
+import ScoreBox from '@/components/score/ScoreBox'
+import { capitalizeFirstLetter } from '@/utility/strings'
+import { getOpenCriticScoreClass } from '@/utility/helper'
+import { OCData } from '@/utility/types'
 import ocLogo from '@/public/ocLogo.svg'
 
 interface Props {

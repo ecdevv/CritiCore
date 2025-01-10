@@ -1,5 +1,5 @@
 import SGDB, { SGDBGame } from "steamgriddb";
-import { normalizeString } from "@/app/utility/strings";
+import { normalizeString } from "@/utility/strings";
 
 interface ExtendedSGDBGame extends SGDBGame {
   release_date: string;
