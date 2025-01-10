@@ -1,13 +1,13 @@
 import { Metadata, ResolvingMetadata } from "next";
 import { headers, cookies } from "next/headers";
 import ViewComponent from "./ViewComponent";
-import CardGrid from "@/app/components/grid/CardGrid";
-import CardList from "@/app/components/list/CardList";
-import Pagination from "@/app/components/pagination/Pagination";
-import { getBlurDataURL }from "@/app/utility/data";
-import { capitalizeFirstLetter, normalizeString } from "@/app/utility/strings";
-import { CardCategories, GameCategories } from "@/app/utility/types";
-import { PLACEHOLDER_184X69, PLACEHOLDER_200X300 } from "@/app/utility/constants";
+import CardGrid from "@/components/grid/CardGrid";
+import CardList from "@/components/list/CardList";
+import Pagination from "@/components/pagination/Pagination";
+import { getBlurDataURL }from "@/utility/data";
+import { capitalizeFirstLetter, normalizeString } from "@/utility/strings";
+import { CardCategories, GameCategories } from "@/utility/types";
+import { PLACEHOLDER_184X69, PLACEHOLDER_200X300 } from "@/utility/constants";
 
 export async function generateMetadata({}, 
   parent: ResolvingMetadata

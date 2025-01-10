@@ -2,12 +2,12 @@ import { Metadata, ResolvingMetadata } from 'next'
 import { headers } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
-import ScoreBox from "@/app/components/score/ScoreBox";
+import ScoreBox from "@/components/score/ScoreBox";
 import OCDataCard from "./OCDataCard";
 import SteamDataCard from "./SteamDataCard";
-import { getBlurDataURL } from "@/app/utility/data";
-import { capitalizeFirstLetter, normalizeString } from "@/app/utility/strings";
-import { PLACEHOLDER_450X675, PLACEHOLDER_460X215 } from "@/app/utility/constants";
+import { getBlurDataURL } from "@/utility/data";
+import { capitalizeFirstLetter, normalizeString } from "@/utility/strings";
+import { PLACEHOLDER_450X675, PLACEHOLDER_460X215 } from "@/utility/constants";
 
 export async function generateMetadata({}, 
   parent: ResolvingMetadata
