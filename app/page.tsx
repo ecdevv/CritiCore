@@ -15,19 +15,19 @@ export default async function Home() {
     let cardGridTwo: CardCategories[] = [];
     const ocData = await fetch(`${baseURL}/api/oc/charts`, { next: { revalidate: 7200 } }).then(res => res.json()); // 2 hours
     
-    // Fetch the data for popular and HoF games from Steam and merge it with the data from OpenCritic (DUE TO VERCEL FREE TIER TIMEOUT LIMITATIONS, WE CANNOT LOAD THE STEAM DATA DUE TO THE LENGTH OF TIME IT TAKES)
+    // Fetch the data for popular and HoF games from Steam and merge it with the data from OpenCritic (Vercel Free Tier makes a 10s timeout limit for API calls, so we may disable Steam fetch calls here in the future)
     if (ocData?.status === 200 && ocData.popular.length > 0 && ocData.hof.length > 0) {
-      // const [ steamPopDataResponse, steamHofDataResponse ] = await Promise.all([
-      //   fetch(`${baseURL}/api/steam/${ocData.popular.map((game: { name: string }) => normalizeString(game.name, true)).join(',')}`, { next: { revalidate: 7200 } }),
-      //   fetch(`${baseURL}/api/steam/${ocData.hof.map((game: { name: string }) => normalizeString(game.name, true)).join(',')}`, { next: { revalidate: 7200 } })
-      // ])
-      // const [ steamPopData, steamHofData ] = await Promise.all([ 
-      //   steamPopDataResponse.json().then(data => data.appDatas),
-      //   steamHofDataResponse.json().then(data => data.appDatas)
-      // ]);
+      const [ steamPopDataResponse, steamHofDataResponse ] = await Promise.all([
+        fetch(`${baseURL}/api/steam/${ocData.popular.map((game: { name: string }) => normalizeString(game.name, true)).join(',')}`, { next: { revalidate: 7200 } }),
+        fetch(`${baseURL}/api/steam/${ocData.hof.map((game: { name: string }) => normalizeString(game.name, true)).join(',')}`, { next: { revalidate: 7200 } })
+      ])
+      const [ steamPopData, steamHofData ] = await Promise.all([ 
+        steamPopDataResponse.json().then(data => data.appDatas),
+        steamHofDataResponse.json().then(data => data.appDatas)
+      ]);
 
-      const steamPopData: GameCategories[] = [];
-      const steamHofData: GameCategories[] = [];
+      // const steamPopData: GameCategories[] = [];
+      // const steamHofData: GameCategories[] = [];
 
       // Setup data for CardGrid with sgdbImages being fetched if steam's image is not available
       const mergeData = async (ocDataArr: GameCategories[], steamDataArr: GameCategories[]) => {

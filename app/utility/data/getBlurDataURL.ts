@@ -1,5 +1,5 @@
 import sharp from "sharp";
-import getCacheSize from "../cache/getCacheSize";
+import { redis } from "../redis";
 
 /**
  * Generates a Base64-encoded blur data URL for an image.
@@ -37,15 +37,14 @@ async function generateBlurDataURL(imageBuffer: ArrayBuffer, options = { width: 
   }
 }
 
-const MAX_CACHE_SIZE = 100 * 1024 * 1024; // 100MB
-const cache = new Map();
-
 export default async function getBlurDataURL(imageUrl: string) {
   if (!imageUrl) return null;
+
   // Check if the image is already cached and start with empty headers
-  const cachedData = cache.get(imageUrl);
-  const headers: Record<string, string> = {};
+  const cachedDataString = await redis.get(`z_blur:${imageUrl}`) || null;
+  const cachedData = cachedDataString ? JSON.parse(cachedDataString) : null;
   if (cachedData && !cachedData.etag) return cachedData.blurDataUrl;
+  const headers: Record<string, string> = {};
   
   try {
     // If there's cached data and an ETag, add 'If-None-Match' header
@@ -53,26 +52,19 @@ export default async function getBlurDataURL(imageUrl: string) {
     const response = await fetch(imageUrl, { headers, next: { revalidate: 7200 } });
 
     // If the response status is 304 (Not Modified), return the cached blurDataUrl
-    if (response.status === 304) return cachedData.blurDataUrl;
+    if (response.status === 304 || response.headers.get('etag') === cachedData?.etag) return cachedData?.blurDataUrl;
 
     const imageBuffer = await response.arrayBuffer();
     const blurDataUrl = await generateBlurDataURL(imageBuffer);
     const etag = response.headers.get('etag');
 
     if (etag) {
+      const newEntry = { blurDataUrl, etag };
       // Update the cache with the new blurDataUrl and ETag
-      if (getCacheSize(cache) >= MAX_CACHE_SIZE) {
-        const firstKey = cache.keys().next().value;
-        cache.delete(firstKey);
-      }
-      cache.set(imageUrl, { blurDataUrl, etag });
+      await redis.set(`z_blur:${imageUrl}`, JSON.stringify(newEntry));
     } else {
-      if (getCacheSize(cache) >= MAX_CACHE_SIZE) {
-        const firstKey = cache.keys().next().value;
-        cache.delete(firstKey);
-      }
-      cache.set(imageUrl, { blurDataUrl });
-      setTimeout(() => cache.delete(imageUrl), 24 * 60 * 60 * 1000);  // 1 day
+      const newEntry = { blurDataUrl };
+      await redis.set(`z_blur:${imageUrl}`, JSON.stringify(newEntry), 'EX', 1 * 24 * 60 * 60);  // 1 day
     }
 
     return blurDataUrl;

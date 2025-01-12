@@ -1,12 +1,12 @@
-import { setCache } from "@/utility/cache";
+import { redis } from "@/utility/redis";
 import { normalizeString } from "@/utility/strings";
 
-const MAX_CACHE_SIZE = 100 * 1024 * 1024; // 100MB
+const REDIS_HASH_KEY = 'steam:_appIndex';
 const EXPIRY_TIME = 24 * 60 * 60; // Cache for 24 hours
-const cache = new Map();
 
 export default async function getSteamIndex() {
-  if (cache.has('appIndex')) return cache.get('appIndex');
+  const cachedAppIndex = await getAppIndexFromCache();
+  if (cachedAppIndex && Object.keys(cachedAppIndex).length > 0) return cachedAppIndex;
 
   try {
     console.log("Fetching app index...");
@@ -31,7 +31,7 @@ export default async function getSteamIndex() {
       lastAppId = data.response.last_appid;
     }
     
-    // Update cache entry and return this entry
+    // Flatten the array
     applist = applist.flat();
 
     // Create an index of app names to app IDs
@@ -40,10 +40,57 @@ export default async function getSteamIndex() {
       return index;
     }, {});
 
-    setCache('appIndex', appIndex, cache, EXPIRY_TIME, MAX_CACHE_SIZE);
+    // Cache the app index and return it
+    await storeAppIndexInCache(appIndex);
     return appIndex;
   } catch (error) {
     console.log('STEAM: Error retrieving applist');
     throw error;
+  }
+}
+
+async function getAppIndexFromCache(): Promise<Record<string, number>> {
+  const allChunks: Record<string, number> = {};
+  let chunkIndex = 1;
+
+  while (true) {
+    const field = `part${chunkIndex}`;
+    const result = await redis.hget(REDIS_HASH_KEY, field);
+
+    if (!result) break;
+
+    Object.assign(allChunks, JSON.parse(result));
+    chunkIndex++;
+  }
+
+  return allChunks;
+}
+
+// Function to split the appIndex into smaller chunks
+function splitAppIndex(appIndex: Record<string, number>, chunkSize: number): Record<string, number>[] {
+  const chunked: Record<string, number>[] = [];
+  const appNames = Object.keys(appIndex);
+
+  for (let i = 0; i < appNames.length; i += chunkSize) {
+    const chunk = appNames.slice(i, i + chunkSize).reduce((acc: Record<string, number>, appName: string) => {
+      acc[appName] = appIndex[appName];
+      return acc;
+    }, {});
+    chunked.push(chunk);
+  }
+
+  return chunked;
+}
+
+// Function to store the appIndex in Redis hash in chunks
+async function storeAppIndexInCache(appIndex: Record<string, number>) {
+  const chunkSize = 15000;
+  const chunks = splitAppIndex(appIndex, chunkSize);
+  
+  // Store each chunk in the Redis hash as a field
+  for (let i = 0; i < chunks.length; i++) {
+    const chunkField = `part${i + 1}`;  // Field name for each chunk
+    await redis.hset(REDIS_HASH_KEY, chunkField, JSON.stringify(chunks[i]));
+    await redis.expire(REDIS_HASH_KEY, EXPIRY_TIME);
   }
 }
