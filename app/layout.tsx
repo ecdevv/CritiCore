@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     images: [
       {
-        url: "/images/opengraph/opengraph-image.webp",
+        url: "/opengraph/opengraph-image.webp",
         alt: "Criticore Logo",
         width: 1200,
         height: 630

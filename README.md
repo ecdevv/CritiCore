@@ -1,6 +1,6 @@
 # CritiCore - Review Aggregator of OpenCritic and Steam Reviews
 
-CritiCore is a web project aimed at presenting API endpoint data in an intuitive and visually engaging way. The platform focuses on creating a seamless and user-friendly experience, making complex data accessible and easy to navigate.
+CritiCore is a personal web project designed to enhance my development skills by presenting API endpoint data in an intuitive and visually engaging way. The platform focuses on creating a seamless, user-friendly experience, allowing me to practice building features that make complex data accessible and easy to navigate. This project serves as a hands-on opportunity to refine my abilities in web development, API integration, and user interface design.
 
 ### Features
 
@@ -37,12 +37,13 @@ $ npm start or npm run dev
 - OpenCritic official API calls are using cache: 'force-cache' due to limited API calls, so not sure when the cache truly expires
 - Upstash free tier only allows 10k commands per day, and there is currently minimal error handling when this limit is reached
 - Blur data urls are cached using Upstash and runs a lot of commands; the 10k limit is not optimal at all
-- Deployed version may not be as optimal as local version due to limitations from the free tier plans of Vercel and Upstash
-- Release dates of games prioritize OC release dates, then Steam
+- Deployed version not as optimal/fast as local version due to limitations from the free tier plans of Vercel and Upstash
+- Loading and Not-found pages are incomplete
 
 ### Potential Improvements
 
 - Could definitely improve upon the look and appeal overall
+- Add additional features
 - Handle invalid data/errors better
 
 ## Credits
