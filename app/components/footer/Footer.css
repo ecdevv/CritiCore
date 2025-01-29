@@ -1,0 +1,22 @@
+.footer-link {
+  position: relative;
+  text-decoration: none;
+}
+
+.footer-link::after, .footer-link-focus::after {
+  content: '';
+  position: absolute;
+  bottom: 5%;
+  left: 50%;
+  width: 100%;
+  height: 1px;
+  background-color: var(--background);
+  transform: translateX(-50%) scaleX(0);
+  transition: background-color 100ms ease, transform 100ms ease;
+  transform-origin: bottom;
+}
+
+.footer-link:hover::after, .footer-link-focus::after {
+  transform: translateX(-50%) scaleX(1);
+  transform-origin: bottom;
+}
