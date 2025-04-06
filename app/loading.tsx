@@ -4,12 +4,12 @@ import { useState, useEffect } from 'react'
 const Loading = () => {
   const [dots, setDots] = useState('')
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setDots(dots => dots + '.')
-    }, 300)
-    return () => clearInterval(interval)
-  }, [])
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     setDots(dots => dots + '.')
+  //   }, 300)
+  //   return () => clearInterval(interval)
+  // }, [])
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-zinc-900">
@@ -21,6 +21,7 @@ const Loading = () => {
           </svg>
         </div>
         <div className="relative text-white">
+          {/* <h1 className="text-6xl font-bold animate-pulse">Loading{dots}</h1> */}
           <h1 className="text-6xl font-bold animate-pulse">Loading{dots}</h1>
         </div>
       </div>
