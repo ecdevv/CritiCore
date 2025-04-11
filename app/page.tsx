@@ -13,58 +13,58 @@ export default async function Home() {
     // Initializing CardGrids and fetch popular games and HoF games from OpenCritic
     let cardGridOne: CardCategories[] = [];
     let cardGridTwo: CardCategories[] = [];
-    const ocData = await fetch(`${baseURL}/api/oc/charts`, { next: { revalidate: 7200 } }).then(res => res.json()); // 2 hours
+    // const ocData = await fetch(`${baseURL}/api/oc/charts`, { next: { revalidate: 7200 } }).then(res => res.json()); // 2 hours
     
     // Fetch the data for popular and HoF games from Steam and merge it with the data from OpenCritic (Vercel Free Tier makes a 10s timeout limit for API calls, so we may disable Steam fetch calls here in the future)
-    if (ocData?.status === 200 && ocData.popular.length > 0 && ocData.hof.length > 0) {
-      const [ steamPopDataResponse, steamHofDataResponse ] = await Promise.all([
-        fetch(`${baseURL}/api/steam/${ocData.popular.map((game: { name: string }) => normalizeString(game.name, true)).join(',')}`, { next: { revalidate: 7200 } }),
-        fetch(`${baseURL}/api/steam/${ocData.hof.map((game: { name: string }) => normalizeString(game.name, true)).join(',')}`, { next: { revalidate: 7200 } })
-      ])
-      const [ steamPopData, steamHofData ] = await Promise.all([ 
-        steamPopDataResponse.json().then(data => data.appDatas),
-        steamHofDataResponse.json().then(data => data.appDatas)
-      ]);
+    // if (ocData?.status === 200 && ocData.popular.length > 0 && ocData.hof.length > 0) {
+    //   const [ steamPopDataResponse, steamHofDataResponse ] = await Promise.all([
+    //     fetch(`${baseURL}/api/steam/${ocData.popular.map((game: { name: string }) => normalizeString(game.name, true)).join(',')}`, { next: { revalidate: 7200 } }),
+    //     fetch(`${baseURL}/api/steam/${ocData.hof.map((game: { name: string }) => normalizeString(game.name, true)).join(',')}`, { next: { revalidate: 7200 } })
+    //   ])
+    //   const [ steamPopData, steamHofData ] = await Promise.all([ 
+    //     steamPopDataResponse.json().then(data => data.appDatas),
+    //     steamHofDataResponse.json().then(data => data.appDatas)
+    //   ]);
 
-      // const steamPopData: GameCategories[] = [];
-      // const steamHofData: GameCategories[] = [];
+    //   // const steamPopData: GameCategories[] = [];
+    //   // const steamHofData: GameCategories[] = [];
 
-      // Setup data for CardGrid with sgdbImages being fetched if steam's image is not available
-      const mergeData = async (ocDataArr: GameCategories[], steamDataArr: GameCategories[]) => {
-        return Promise.all(
-          ocDataArr.map(async (ocGame) => {
-            const steamGame = steamDataArr.find(game => normalizeString(game.name) === normalizeString(ocGame.name)) || undefined;
-            const category = ocGame.category || steamGame?.category || '';
-            const ocid = ocGame.id;
-            const steamid = steamGame?.id || undefined;
-            const name = ocGame.name || steamGame?.name || 'N/A';
-            const releaseDate = ocGame.releaseDate || steamGame?.releaseDate || 'N/A';
-            const developer = ocGame.developer || steamGame?.developer || 'N/A';
-            const headerog = ocGame.headerImage || steamGame?.headerImage || undefined
-            const headerblur = headerog ? await getBlurDataURL(headerog) : undefined
-            const headerimage = headerog ? { og: headerog, blur: headerblur } : { og: PLACEHOLDER_184X69, blur: undefined };
-            const og = steamGame?.capsuleImage || ocGame.capsuleImage || (await fetch(`${baseURL}/api/sgdb/${normalizeString(name, true)}`, { next: { revalidate: 7200 } }).then(res => res.json())).capsuleImage || undefined; // 2 hours
-            const blur = og ? await getBlurDataURL(og) : undefined;
-            const image = og ? { og, blur } : { og: PLACEHOLDER_200X300, blur: undefined };
-            return {
-              category: category,
-              ocid,
-              steamid,
-              name,
-              releaseDate: capitalizeFirstLetter(releaseDate),
-              developer,
-              headerImage: headerimage,
-              capsuleImage: image || { og: PLACEHOLDER_200X300 },
-            };
-          })
-        );
-      };
-      cardGridOne = await mergeData(ocData.popular, steamPopData);
-      cardGridTwo = await mergeData(ocData.hof, steamHofData);
-    }
+    //   // Setup data for CardGrid with sgdbImages being fetched if steam's image is not available
+    //   const mergeData = async (ocDataArr: GameCategories[], steamDataArr: GameCategories[]) => {
+    //     return Promise.all(
+    //       ocDataArr.map(async (ocGame) => {
+    //         const steamGame = steamDataArr.find(game => normalizeString(game.name) === normalizeString(ocGame.name)) || undefined;
+    //         const category = ocGame.category || steamGame?.category || '';
+    //         const ocid = ocGame.id;
+    //         const steamid = steamGame?.id || undefined;
+    //         const name = ocGame.name || steamGame?.name || 'N/A';
+    //         const releaseDate = ocGame.releaseDate || steamGame?.releaseDate || 'N/A';
+    //         const developer = ocGame.developer || steamGame?.developer || 'N/A';
+    //         const headerog = ocGame.headerImage || steamGame?.headerImage || undefined
+    //         const headerblur = headerog ? await getBlurDataURL(headerog) : undefined
+    //         const headerimage = headerog ? { og: headerog, blur: headerblur } : { og: PLACEHOLDER_184X69, blur: undefined };
+    //         const og = steamGame?.capsuleImage || ocGame.capsuleImage || (await fetch(`${baseURL}/api/sgdb/${normalizeString(name, true)}`, { next: { revalidate: 7200 } }).then(res => res.json())).capsuleImage || undefined; // 2 hours
+    //         const blur = og ? await getBlurDataURL(og) : undefined;
+    //         const image = og ? { og, blur } : { og: PLACEHOLDER_200X300, blur: undefined };
+    //         return {
+    //           category: category,
+    //           ocid,
+    //           steamid,
+    //           name,
+    //           releaseDate: capitalizeFirstLetter(releaseDate),
+    //           developer,
+    //           headerImage: headerimage,
+    //           capsuleImage: image || { og: PLACEHOLDER_200X300 },
+    //         };
+    //       })
+    //     );
+    //   };
+    //   cardGridOne = await mergeData(ocData.popular, steamPopData);
+    //   cardGridTwo = await mergeData(ocData.hof, steamHofData);
+    // }
     
     // Fetch the charts data for top releases and most played list, then the data for top releases and most played games (all for Steam)
-    if (!ocData || ocData.status !== 200 || ocData.popular.length === 0 || ocData.hof.length === 0) {
+    // if (!ocData || ocData.status !== 200 || ocData.popular.length === 0 || ocData.hof.length === 0) {
       const { topReleases, mostPlayed } = await fetch(`${baseURL}/api/steam/charts`, { next: { revalidate: 7200 } }).then(res => res.json()); // 2 hours
       const [topReleasesResponse, mostPlayedResponse] = await Promise.all([
         fetch(`${baseURL}/api/steam/${topReleases[0].appids.slice(0, 10).join(',')}`, { next: { revalidate: 7200 } }),
@@ -101,7 +101,7 @@ export default async function Home() {
       };
       cardGridOne = await setupGrid(topReleasesData);
       cardGridTwo = await setupGrid(mostPlayedData);
-    }
+    // }
 
     return (
       <div className="flex justify-center items-start min-h-screen sm:p-12 py-12 px-6 bg-zinc-900">
