@@ -2,7 +2,7 @@ import SGDB, { SGDBGame } from "steamgriddb";
 import { normalizeString } from "@/utility/strings";
 
 interface ExtendedSGDBGame extends SGDBGame {
-  release_date: string;
+  release_date: number;
 }
 
 async function getSGDBImage(name: string) {
