@@ -10,7 +10,12 @@ import { capitalizeFirstLetter, normalizeString } from "@/utility/strings";
 import { PLACEHOLDER_450X675, PLACEHOLDER_460X215 } from "@/utility/constants";
 
 
-export async function generateMetadata({ params }: { params: { name: string } }, 
+type Props = {
+  params: Promise<{ name: string }>
+}
+
+export async function generateMetadata(
+  { params }: Props,
   parent: ResolvingMetadata,
 ): Promise<Metadata> {
   // optionally access and extend (rather than replace) parent metadata
