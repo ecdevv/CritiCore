@@ -18,7 +18,7 @@ export default async function getSteamIndex() {
 
     // Fetch data from Steam API; data is paginated by 15000 to ensure data is under 2MB for force-cache so we loop until haveMoreResults is false
     while (haveMoreResults) {
-      const searchParams = new URLSearchParams({ key, include_games: 'true', include_dlc: 'false', include_software: 'false', include_videos: 'false', include_hardware: 'false', max_results: '15000' });
+      const searchParams = new URLSearchParams({ key, include_games: 'true', include_dlc: 'false', include_software: 'TRUE', include_videos: 'false', include_hardware: 'false', max_results: '15000' });
       if (lastAppId) searchParams.append('last_appid', lastAppId.toString());
       const response = await fetch(`${process.env.STEAM_API_APPLIST_V1}/?${searchParams}`, { next: { revalidate: EXPIRY_TIME } });
       if (!response.ok) throw new Error(`Failed to fetch applist data, status code: ${response.status}`);

@@ -30,7 +30,7 @@ export async function generateMetadata({},
       type: 'website',
       locale: 'en-US',
       url: `${headersList.get('x-pathname')}`,
-      siteName: 'Criticore',
+      siteName: 'CritiCore',
       images: [
         ...previousImages
       ]
@@ -58,7 +58,6 @@ export default async function SearchPage({ params, searchParams }: SearchProps) 
     // Fetch search results
     const searchResultsResponse = await fetch(`${baseUrl}/api/steam/search/?${new URLSearchParams({ q: searchQuery })}`, { next: { revalidate: 7200 } });  // 2 hours
     const { searchResults } = await searchResultsResponse.json();
-    console.log('SEARCH RESULTS:', searchResults);
 
     // DISABLING BLUR DATA/REDIS FOR BETTER PERFORMANCE
     // If we have the data for the results, setup data for CardGrid with sgdbImages being fetched if steam's image is not available
@@ -116,7 +115,7 @@ export default async function SearchPage({ params, searchParams }: SearchProps) 
                     <ViewComponent page={page.toString()} searchResultsLength={searchResults.length} />
                   </CardList>
               }
-              {(searchResults.length > maxLength ) && <Pagination handlePrev={handlePrevPage} handleNext={handleNextPage} />}
+              {(searchResults.length > maxLength ) && <Pagination current={Number(page)} total={Math.ceil(searchResults.length / maxLength)} handlePrev={handlePrevPage} handleNext={handleNextPage} />}
             </div>
           : <h1 className="self-center text-white">No results found.</h1>
         }

@@ -9,8 +9,9 @@ import { getBlurDataURL } from "@/utility/data";
 import { capitalizeFirstLetter, normalizeString } from "@/utility/strings";
 import { PLACEHOLDER_450X675, PLACEHOLDER_460X215 } from "@/utility/constants";
 
-export async function generateMetadata({}, 
-  parent: ResolvingMetadata
+
+export async function generateMetadata({ params }: { params: { name: string } }, 
+  parent: ResolvingMetadata,
 ): Promise<Metadata> {
   // optionally access and extend (rather than replace) parent metadata
   const previousImages = (await parent).openGraph?.images || []
@@ -19,8 +20,18 @@ export async function generateMetadata({},
   const headersList = await headers();
 
   // Parse the search categories and set the title
-  const pathname = headersList.get('x-pathname') || '';
-  const title = capitalizeFirstLetter(normalizeString(pathname.substring(pathname.lastIndexOf('/') + 1)));
+  // const pathname = headersList.get('x-pathname') || '';
+  // const title = capitalizeFirstLetter(normalizeString(pathname.substring(pathname.lastIndexOf('/') + 1)));
+
+  const baseURL = headersList.get('x-base-url') || '';
+  const name = (await params).name || '';
+
+  const [ocData, steamData] = await Promise.all([
+    fetch(`${baseURL}/api/oc/${name}`, { next: { revalidate: 300 } }).then(res => res.json()),
+    fetch(`${baseURL}/api/steam/${name}`, { next: { revalidate: 300 } }).then(res => res.json())
+  ]);
+
+  const title = ocData.name || steamData.name || 'N/A';
 
   return {
     title: title,
