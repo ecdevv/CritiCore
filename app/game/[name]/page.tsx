@@ -30,7 +30,7 @@ export async function generateMetadata({},
       type: 'website',
       locale: 'en-US',
       url: `${headersList.get('x-pathname')}`,
-      siteName: 'Criticore',
+      siteName: 'CritiCore',
       images: [
         ...previousImages
       ]
@@ -72,10 +72,12 @@ export default async function Game({ params, searchParams }: GameProps) {
     const developer = ocData.developer || steamData.developer || 'N/A';
     const headerImage = steamData.headerImage || ocData.headerImage || undefined;
     const capsuleImage = steamData.capsuleImage || ocData.capsuleImage || (await fetch(`${baseURL}/api/sgdb/${name}`, { next: { revalidate: 7200 } }).then(res => res.json())).capsuleImage;  // 2 hours
-    const [headerImageBlur, capsuleImageBlur] = await Promise.all([
-      headerImage ? getBlurDataURL(headerImage) : Promise.resolve(undefined),
-      capsuleImage ? getBlurDataURL(capsuleImage) : Promise.resolve(undefined)
-    ]);
+    // const [headerImageBlur, capsuleImageBlur] = await Promise.all([
+    //   headerImage ? getBlurDataURL(headerImage) : Promise.resolve(undefined),
+    //   capsuleImage ? getBlurDataURL(capsuleImage) : Promise.resolve(undefined)
+    // ]);
+    const headerImageBlur = undefined
+    const capsuleImageBlur = undefined
     const image = capsuleImage ? { og: capsuleImage, blur: capsuleImageBlur } : { og: PLACEHOLDER_450X675, blur: undefined };
     const image2 = headerImage ? { og: headerImage, blur: headerImageBlur } : { og: PLACEHOLDER_460X215, blur: undefined };
     

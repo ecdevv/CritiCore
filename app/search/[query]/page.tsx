@@ -58,18 +58,22 @@ export default async function SearchPage({ params, searchParams }: SearchProps) 
     // Fetch search results
     const searchResultsResponse = await fetch(`${baseUrl}/api/steam/search/?${new URLSearchParams({ q: searchQuery })}`, { next: { revalidate: 7200 } });  // 2 hours
     const { searchResults } = await searchResultsResponse.json();
+    console.log('SEARCH RESULTS:', searchResults);
 
+    // DISABLING BLUR DATA/REDIS FOR BETTER PERFORMANCE
     // If we have the data for the results, setup data for CardGrid with sgdbImages being fetched if steam's image is not available
-    if (searchResults.length) {
+    if (searchResults?.length) {
       categoryData = await Promise.all(
         searchResults
           .filter((game: GameCategories) => game.id)
           .map(async (game: GameCategories) => {
             const headerog = game.headerImage || undefined
-            const headerblur = headerog ? await getBlurDataURL(headerog) : undefined
+            // const headerblur = headerog ? await getBlurDataURL(headerog) : undefined
+            const headerblur = undefined
             const headerimage = headerog ? { og: headerog, blur: headerblur } : { og: PLACEHOLDER_184X69, blur: undefined };
             const og = game.capsuleImage || (await fetch(`${baseUrl}/api/sgdb/${normalizeString(game.name, true)}`, { next: { revalidate: 7200 } }).then(res => res.json())).capsuleImage || undefined;  // 2 hours
-            const blur = og ? await getBlurDataURL(og) : undefined;
+            // const blur = og ? await getBlurDataURL(og) : undefined;
+            const blur = undefined;
             const image = og ? { og, blur } : { og: PLACEHOLDER_200X300, blur: undefined };
             return {
               category: 'Search Results',

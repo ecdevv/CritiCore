@@ -18,21 +18,21 @@ const geistMono = localFont({
 export const metadata: Metadata = {
   metadataBase: new URL("https://criticore.vercel.app/"),
   title: {
-    default: "Criticore | Video Game Reviews",
-    template: "%s | Criticore"
+    default: "CritiCore | Video Game Reviews",
+    template: "%s | CritiCore"
   },
   description: "Discover the ultimate hub for video game review!",
   openGraph: {
-    title: "Criticore | Video Game Reviews",
+    title: "CritiCore | Video Game Reviews",
     description: "Discover the ultimate hub for video game review!",
     type: "website",
     url: "https://criticore.vercel.app/",
-    siteName: "Criticore",
+    siteName: "CritiCore",
     locale: "en_US",
     images: [
       {
         url: "/opengraph/opengraph-image.webp",
-        alt: "Criticore Logo",
+        alt: "CritiCore Logo",
         width: 1200,
         height: 630
       }

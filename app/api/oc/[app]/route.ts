@@ -13,7 +13,15 @@ const DATA_EXPIRY = 2 * 60 * 60;     // 2 hours
 async function getAppIDByName(name: string) {
   const normalizedName = normalizeString(name);
   const cacheKey = `oc:${normalizeString(name)}`;
-  const cachedData = await redis.get(cacheKey);
+
+  let cachedData : string | null = null;
+
+  try {
+    cachedData = await redis.get(cacheKey);
+  } catch (err) {
+    console.error("Redis unavailable, skipping cache:", err);
+  }
+
   if (cachedData === "") return null;
   if (cachedData) return cachedData;
 
@@ -31,13 +39,22 @@ async function getAppIDByName(name: string) {
   const response = await fetch(url, { ...options, cache: 'force-cache' });
   if (!response.ok) {
     console.log(`OC: Failed to fetch search data, status code: ${response.status}`);
-    await redis.set(cacheKey, "", 'EX', 60);  // 1 minute for failed responses
+    try {
+      await redis.set(cacheKey, "", 'EX', 60);  // 1 minute for failed responses
+    } catch (err) {
+      console.error("Redis unavailable, skipping cache:", err);
+    }
     return null;
   }
   const data = await response.json();
   if (!data) {
     console.log('OC: Invalid search data, status code: 404');
-    await redis.set(cacheKey, "", 'EX', DATA_EXPIRY);
+    try {
+      await redis.set(cacheKey, "", 'EX', DATA_EXPIRY);
+    } catch (err) {
+      console.error("Redis unavailable, skipping cache:", err);
+    }
+    
     return null;
   }
 
@@ -45,18 +62,33 @@ async function getAppIDByName(name: string) {
   const apps = data as Array<{ id: number; name: string; dist: number }>;
   const appid = apps.find(app => normalizeString(app.name) === normalizedName)?.id || undefined;
   if (!appid) {
-    await redis.set(cacheKey, "", 'EX', DATA_EXPIRY);
+    try {
+      await redis.set(cacheKey, "", 'EX', DATA_EXPIRY);
+    } catch (err) {
+      console.error("Redis unavailable, skipping cache:", err);
+    }
     return null;
   }
 
   // Update cache entry and return this entry
-  await redis.set(cacheKey, appid, 'EX', ID_EXPIRY);
+  try {
+    await redis.set(cacheKey, appid, 'EX', ID_EXPIRY);
+  } catch (err) {
+    console.error("Redis unavailable, skipping cache:", err);
+  }
   return appid;
 }
 
 async function getOCData(appid: number) {
   const cacheKey = `oc:${appid}`;
-  const cachedData = await redis.get(cacheKey);
+  let cachedData : string | null = null;
+
+  try {
+    cachedData = await redis.get(cacheKey);
+  } catch (err) {
+    console.error("Redis unavailable, skipping cache:", err);
+  }
+
   if (cachedData === "") return null;
   if (cachedData) return JSON.parse(cachedData);
 
@@ -77,13 +109,21 @@ async function getOCData(appid: number) {
     const pageData = await getDataByPage(appid); // If we run out of requests, we search the page instead
     if (pageData) return pageData;
     console.log(`OC: Failed to fetch game data, status code: ${response.status}`);
-    await redis.set(cacheKey, "", 'EX', 60);  // 1 minute for failed responses
+    try {
+      await redis.set(cacheKey, "", 'EX', 60);  // 1 minute for failed responses
+    } catch (err) {
+      console.error("Redis unavailable, skipping cache:", err);
+    }
     return null;
   }
   const data = await response.json();
   if (!data) {
     console.log('OC: Invalid game data, status code: 404');
-    await redis.set(cacheKey, "", 'EX', DATA_EXPIRY);
+    try {
+      await redis.set(cacheKey, "", 'EX', DATA_EXPIRY);
+    } catch (err) {
+      console.error("Redis unavailable, skipping cache:", err);
+    }
     return null;
   }
 
@@ -123,8 +163,14 @@ async function getOCData(appid: number) {
   
   // Cache the appIDCache for the normalized name to skip appIDByName calls since normalized names are === page's game name
   const normalizedAppName = normalizeString(name);
-  await redis.set(`oc:${normalizedAppName}`, id, 'EX', ID_EXPIRY);
-  await redis.set(`oc:${id}`, JSON.stringify(newEntry), 'EX', DATA_EXPIRY);
+
+  try {
+    await redis.set(`oc:${normalizedAppName}`, id, 'EX', ID_EXPIRY);
+    await redis.set(`oc:${id}`, JSON.stringify(newEntry), 'EX', DATA_EXPIRY);
+  } catch (err) {
+    console.error("Redis unavailable, skipping cache:", err);
+  }
+
   return newEntry;
 }
 
@@ -170,7 +216,11 @@ async function getDataByPage(appid: number) {
   const capsuleImage = capsuleImageResponse?.ok ? capsuleImageUrl : undefined;
 
   const newEntry = { ...gameData, releaseDate, capsuleImage };
-  redis.set(`oc:${appid}`, JSON.stringify(newEntry), 'EX', DATA_EXPIRY);
+  try {
+    redis.set(`oc:${appid}`, JSON.stringify(newEntry), 'EX', DATA_EXPIRY);
+  } catch (err) {
+    console.error("Redis unavailable, skipping cache:", err);
+  }
   return newEntry;
 }
 

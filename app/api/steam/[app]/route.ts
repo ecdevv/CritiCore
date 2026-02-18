@@ -31,10 +31,16 @@ async function getSteamDatasByName(names: string[]) {
 async function getAppIDByName(name: string) {
   const normalizedName = normalizeString(name);
   const cacheKey = `steam:${normalizedName}`;
-  const cachedData = await redis.get(cacheKey);
+  let cachedData : string | null = null;
+
+  try {
+    cachedData = await redis.get(cacheKey);
+  } catch (err) {
+    console.error("Redis unavailable, skipping cache:", err);
+  }
   if (cachedData === "") return null;
   if (cachedData) return cachedData;
-
+  
   console.log(`STEAM: Fetching app id for game name: ${normalizedName}`);
   const appIndex = await getSteamIndex();
   const appid = await searchAppIndex(appIndex, normalizedName);
@@ -44,7 +50,13 @@ async function getAppIDByName(name: string) {
 
 async function searchAppIndex(appIndex: { [key: string]: number }, normalizedName: string) {
   const cacheKey = `steam:${normalizedName}`;
-  const cachedData = await redis.get(cacheKey);
+  let cachedData : string | null = null;
+
+  try {
+    cachedData = await redis.get(cacheKey);
+  } catch (err) {
+    console.error("Redis unavailable, skipping cache:", err);
+  }
   if (cachedData === "") return null;
   if (cachedData) return cachedData;
 
@@ -52,10 +64,18 @@ async function searchAppIndex(appIndex: { [key: string]: number }, normalizedNam
     // Find the appid based on the game name from the appIndex.
     const appid = appIndex[normalizedName] || null;
     if (!appid) {
-      await redis.set(cacheKey, "", 'EX', DATA_EXPIRY);
+      try {
+        await redis.set(cacheKey, "", 'EX', DATA_EXPIRY);
+      } catch (err) {
+        console.error("Redis unavailable, skipping cache:", err);
+      }
       return null;
     }
-    await redis.set(cacheKey, appid, 'EX', ID_EXPIRY);
+    try {
+      await redis.set(cacheKey, appid, 'EX', ID_EXPIRY);
+    } catch (err) {
+      console.error("Redis unavailable, skipping cache:", err);
+    }
     return appid;
   } catch {
     return null;
@@ -84,7 +104,13 @@ async function getSteamDatas(appids: number[]) {
 
 async function getSteamData(appid: number) {
   const cacheKey = `steam:${appid}`;
-  const cachedData = await redis.get(cacheKey);
+  let cachedData : string | null = null;
+  try {
+    cachedData = await redis.get(cacheKey);
+  } catch (err) {
+    console.error("Redis unavailable, skipping cache:", err);
+  }
+  
   if (cachedData === "") return null;
   if (cachedData) return JSON.parse(cachedData);
 
@@ -101,7 +127,13 @@ async function getSteamData(appid: number) {
     if (storeData) return storeData;
     const failedResponse = allResponses.find(response => !response.ok);
     console.log(`STEAM: Failed to fetch app data, status code: ${failedResponse?.status}`);
-    await redis.set(cacheKey, "", 'EX', 60);  // 1 minute for failed responses
+
+    try {
+      await redis.set(cacheKey, "", 'EX', 60);  // 1 minute for failed responses
+    } catch (err) {
+      console.error("Redis unavailable, skipping cache:", err);
+    }
+    
     return null;
   }
   const [detailsResponse, reviewsResponse] = allResponses;
@@ -114,17 +146,34 @@ async function getSteamData(appid: number) {
     const storeData = await getDataByStore(appid);   // Game may exist without critic data, but it won't be included in the appIndex so we search the store page instead;
     if (storeData) return storeData;
     console.log('STEAM: Invalid details data, status code: 404');
-    await redis.set(cacheKey, "", 'EX', 60);        // 1 minute for failed responses (details data is always returning ok and we should be looking up good ids now through search page)
+
+    try {
+      await redis.set(cacheKey, "", 'EX', 60);        // 1 minute for failed responses (details data is always returning ok and we should be looking up good ids now through search page)
+    } catch (err) {
+      console.error("Redis unavailable, skipping cache:", err);
+    }
+    
     return null;
   }
   if (detailsData[appid].data.type !== 'game') {
     console.log('STEAM: Details data is not a game, status code: 404');
-    await redis.set(cacheKey, "", 'EX', DATA_EXPIRY);
+
+    try {
+      await redis.set(cacheKey, "", 'EX', DATA_EXPIRY);
+    } catch (err) {
+      console.error("Redis unavailable, skipping cache:", err);
+    }
+    
     return null;
   }
   if (!reviewsData || reviewsData.success !== 1) {
     console.log('STEAM: Invalid reviews data, status code: 404');  // Check for validity using its success property since its response/data is always returning ok
-    await redis.set(cacheKey, "", 'EX', DATA_EXPIRY);
+    try {
+      await redis.set(cacheKey, "", 'EX', DATA_EXPIRY);
+    } catch (err) {
+      console.error("Redis unavailable, skipping cache:", err);
+    }
+
     return null;
   }
 
@@ -158,14 +207,27 @@ async function getSteamData(appid: number) {
   };
 
   const normalizedAppName = normalizeString(name);
-  await redis.set(`steam:${normalizedAppName}`, id, 'EX', ID_EXPIRY);
-  await redis.set(`steam:${id}`, JSON.stringify(newEntry), 'EX', DATA_EXPIRY);
+  
+  try {
+    await redis.set(`steam:${normalizedAppName}`, id, 'EX', ID_EXPIRY);
+    await redis.set(`steam:${id}`, JSON.stringify(newEntry), 'EX', DATA_EXPIRY);
+  } catch (err) {
+    console.error("Redis unavailable, skipping cache:", err);
+  }
+  
   return newEntry;
 }
 
 async function getSteamDynamicData(appid: number) {
   const cacheKey = `steam:${appid}:dynamic`;
-  const cachedData = await redis.get(cacheKey);
+  let cachedData : string | null = null;
+
+  try {
+    cachedData = await redis.get(cacheKey);
+  } catch (err) {
+    console.error("Redis unavailable, skipping cache:", err);
+  }
+
   if (cachedData) return JSON.parse(cachedData);
 
   const response = await fetch(`${process.env.STEAM_API_NUM_PLAYERS}?${new URLSearchParams({ appid: appid.toString(), format: 'json' })}`)
@@ -174,7 +236,13 @@ async function getSteamDynamicData(appid: number) {
   if (!data || data.response.result !== 1) return null;
   const currentPlayers = data.response.player_count;
   const newEntry = { currentPlayers };
-  await redis.set(cacheKey, JSON.stringify(newEntry), 'EX', DYNAMIC_EXPIRY);
+
+  try {
+    await redis.set(cacheKey, JSON.stringify(newEntry), 'EX', DYNAMIC_EXPIRY);
+  } catch (err) {
+    console.error("Redis unavailable, skipping cache:", err);
+  }
+  
   return newEntry;
 }
 
@@ -202,7 +270,13 @@ async function getDataByStore(appid: number) {
   });
 
   const newEntry = { id: appid, name, releaseDate: formatDate(date), developer, publisher };
-  redis.set(`steam:${appid}`, JSON.stringify(newEntry), 'EX', DATA_EXPIRY);
+
+  try {
+    redis.set(`steam:${appid}`, JSON.stringify(newEntry), 'EX', DATA_EXPIRY);
+  } catch (err) {
+    console.error("Redis unavailable, skipping cache:", err);
+  }
+  
   return newEntry;
 }
 

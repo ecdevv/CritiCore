@@ -55,7 +55,14 @@ async function getAppIndexFromCache(): Promise<Record<string, number>> {
 
   while (true) {
     const field = `part${chunkIndex}`;
-    const result = await redis.hget(REDIS_HASH_KEY, field);
+    let result: string | null = null;
+
+    // Get the field from the Redis hash
+    try {
+      result = await redis.hget(REDIS_HASH_KEY, field);
+    } catch (err) {
+      console.error("Redis unavailable, skipping cache:", err);
+    }
 
     if (!result) break;
 
@@ -90,7 +97,12 @@ async function storeAppIndexInCache(appIndex: Record<string, number>) {
   // Store each chunk in the Redis hash as a field
   for (let i = 0; i < chunks.length; i++) {
     const chunkField = `part${i + 1}`;  // Field name for each chunk
-    await redis.hset(REDIS_HASH_KEY, chunkField, JSON.stringify(chunks[i]));
-    await redis.expire(REDIS_HASH_KEY, EXPIRY_TIME);
+
+    try {
+      await redis.hset(REDIS_HASH_KEY, chunkField, JSON.stringify(chunks[i]));
+      await redis.expire(REDIS_HASH_KEY, EXPIRY_TIME);
+    } catch (err) {
+      console.error("Redis unavailable, skipping cache:", err);
+    }
   }
 }

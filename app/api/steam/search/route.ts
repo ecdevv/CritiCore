@@ -101,9 +101,13 @@ async function getSteamStore(searchQuery: string) {
   const results = levenshteinResults.filter(game => game.id);
   await Promise.all(results.map(async game => {
     const cacheKey = `steam:${normalizeString(game.name)}`;
-    const cachedData = await redis.get(cacheKey);
-    if (cachedData) return;
-    await redis.set(cacheKey, game.id, 'EX', 24 * 60 * 60); // 24 hours
+    try {
+      const cachedData = await redis.get(cacheKey);
+      if (cachedData) return;
+      await redis.set(cacheKey, game.id, 'EX', 24 * 60 * 60); // 24 hours
+    } catch (error) {
+      console.error(error);
+    }
   }));
   return results;
 }

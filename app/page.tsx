@@ -71,21 +71,24 @@ export default async function Home() {
         fetch(`${baseURL}/api/steam/${mostPlayed.slice(0, 10).map((game: { appid: number }) => game.appid).join(',')}`, { next: { revalidate: 7200 } })
       ]);
       const [topReleasesData, mostPlayedData] = await Promise.all([
-        topReleasesResponse.json().then(data => data.appDatas),
-        mostPlayedResponse.json().then(data => data.appDatas)
+        topReleasesResponse.json().then(data => data?.appDatas || []),
+        mostPlayedResponse.json().then(data => data?.appDatas || [])
       ]);
-      topReleasesData.forEach((game: GameCategories) => game.category = topReleases[0].category);
-      mostPlayedData.forEach((game: GameCategories) => game.category = mostPlayed[0].category);
+      topReleasesData?.forEach((game: GameCategories) => game.category = topReleases[0].category);
+      mostPlayedData?.forEach((game: GameCategories) => game.category = mostPlayed[0].category);
 
+      // DISABLING BLUR DATA FOR NOW FOR BETTER PERFORMANCE
       // Setup data for CardGrid with sgdbImages being fetched if steam's image is not available
       const setupGrid = async (data: GameCategories[]) => {
         return Promise.all(
           data.map(async (game: GameCategories) => {
             const headerog = game.headerImage || undefined
-            const headerblur = headerog ? await getBlurDataURL(headerog) : undefined
+            // const headerblur = headerog ? await getBlurDataURL(headerog) : undefined
+            const headerblur = undefined
             const headerimage = headerog ? { og: headerog, blur: headerblur } : { og: PLACEHOLDER_200X300, blur: undefined };
             const og = game.capsuleImage || (await fetch(`${baseURL}/api/sgdb/${normalizeString(game.name, true)}`, { next: { revalidate: 7200 } }).then(res => res.json())).capsuleImage || undefined;
-            const blur = og ? await getBlurDataURL(og) : undefined;
+            // const blur = og ? await getBlurDataURL(og) : undefined;
+            const blur = undefined
             const image = og ? { og, blur } : { og: PLACEHOLDER_200X300, blur: undefined };
             return {
               category: game.category || '',
@@ -99,8 +102,8 @@ export default async function Home() {
           })
         )
       };
-      cardGridOne = await setupGrid(topReleasesData);
-      cardGridTwo = await setupGrid(mostPlayedData);
+      cardGridOne = await setupGrid(mostPlayedData);
+      cardGridTwo = await setupGrid(topReleasesData);
     // }
 
     return (

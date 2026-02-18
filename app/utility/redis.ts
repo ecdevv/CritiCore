@@ -6,4 +6,12 @@ const getRedisURL = () => {
   throw new Error('REDIS_URL is not defined');
 }
 
-export const redis = new Redis(getRedisURL())
+export const redis = new Redis(getRedisURL(), {
+  lazyConnect: true,
+  retryStrategy: () => null,
+  maxRetriesPerRequest: 2000
+})
+
+redis.on("error", (err) => {
+  console.error("Redis error:", err.message)
+})
